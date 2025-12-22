@@ -13,7 +13,7 @@ We have automated the setup process. No manual JSON editing or path configuratio
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/founder-os.git
+git clone https://github.com/IdanSarfati/founder-os.git
 cd founder-os
 ```
 
