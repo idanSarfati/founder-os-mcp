@@ -62,6 +62,8 @@ Whenever you start a new project or a new coding session, open the Composer (`Cm
 
 The agent will execute the `bootstrap_project` tool, injecting a local `.cursorrules` file into your folder. From that moment, the AI will enforce your architecture constraints (e.g., "Do not use SQLite," "Follow Clean Architecture") and will refuse to implement code that violates these rules.
 
+> 💡 **Tip:** To get the best results, share the project's main page (Root Page) with the bot, and it will automatically find all sub-pages on its own.
+
 ---
 
 ## 🛠 Core Features (MCP Tools)
