@@ -1,6 +1,7 @@
 mcp
 notion-client
 python-dotenv
+requests
 starlette<0.47.0
 supabase
 
