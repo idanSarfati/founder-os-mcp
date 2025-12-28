@@ -1,4 +1,5 @@
 import os
+import sys
 from mcp.server.fastmcp import FastMCP
 from config.auth_config import load_auth_config
 
@@ -11,6 +12,29 @@ from config.setup_governance import GOVERNANCE_RULES
 # Import module directly to avoid Python import reference issues with global variables
 from src.utils import health
 from src.utils.health import is_update_available, get_update_notice  # Keep these for tool functions
+# Import environment validation
+from src.utils.validation import validate_environment
+
+# Pre-flight validation: Check API connectivity before starting server
+# Configure stdout for Windows Unicode support
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except (AttributeError, ValueError):
+        # Python < 3.7 or reconfigure failed, use ASCII fallback
+        pass
+
+print("🔍 Validating environment...")
+is_valid, error_msg = validate_environment()
+
+if not is_valid:
+    print("\n" + "="*40)
+    print(error_msg)
+    print("="*40 + "\n")
+    print("The server cannot start due to configuration errors.")
+    sys.exit(1)  # Exit cleanly, don't crash
+
+print("✅ Environment looks good! Starting server...")
 
 # 1. Validate Auth on Startup
 try:

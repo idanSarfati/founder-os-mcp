@@ -42,13 +42,103 @@ def setup_env():
     # 1. Notion Token (required)
     while True:
         notion_token = input("   👉 Paste Notion Token (ntn_ or secret_): ").strip()
-        if (notion_token.startswith("secret_") or notion_token.startswith("ntn_")) and len(notion_token) > 20:
+        
+        # Validate format
+        if not (notion_token.startswith("secret_") or notion_token.startswith("ntn_")):
+            print("   ⚠️  Invalid Token. Must start with 'secret_' or 'ntn_'.")
+            continue
+        
+        # Extract key part for character validation
+        if notion_token.startswith("secret_"):
+            key_part = notion_token[7:]  # Everything after "secret_"
+        else:  # ntn_
+            key_part = notion_token[4:]  # Everything after "ntn_"
+        
+        # Validate character set (should be base64-like: alphanumeric, _, -, =)
+        import re
+        if not re.match(r'^[a-zA-Z0-9_-]+$', key_part):
+            print("   ⚠️  Invalid Token. Key contains invalid characters.")
+            continue
+        
+        # API verification is the definitive check
+        print("   🔍 Verifying API key...")
+        try:
+            from notion_client import Client
+            test_client = Client(auth=notion_token)
+            test_client.users.me()  # Minimal API call to verify key
+            print("   ✅ API key verified successfully!")
             break
-        print("   ⚠️  Invalid Token. Must start with 'secret_' or 'ntn_'.")
+        except Exception as e:
+            print(f"   ⚠️  API key verification failed: {str(e)}")
+            retry = input("   👉 Continue anyway? (y/n): ").strip().lower()
+            if retry == 'y':
+                break
+            print("   Please check your API key and try again.")
 
     # 2. Linear API Key (optional - press Enter to skip)
     print("   ℹ️  (Optional) Add Linear API Key for task context.")
-    linear_key = input("   👉 Paste Linear API Key (press Enter to skip): ").strip()
+    while True:
+        linear_key = input("   👉 Paste Linear API Key (press Enter to skip): ").strip()
+        
+        if not linear_key:
+            # User skipped Linear - that's fine
+            break
+        
+        # Validate Linear API key format (should start with lin_api_)
+        if not linear_key.startswith("lin_api_"):
+            print("   ⚠️  Invalid Linear API Key. Should start with 'lin_api_'.")
+            retry = input("   👉 Try again? (y/n, or press Enter to skip): ").strip().lower()
+            if retry != 'y':
+                linear_key = ""
+                break
+            continue
+        
+        # Extract key part for character validation
+        key_part = linear_key[8:]  # Everything after "lin_api_"
+        
+        # Validate character set (should be base64-like: alphanumeric)
+        import re
+        if not re.match(r'^[a-zA-Z0-9]+$', key_part):
+            print("   ⚠️  Invalid Linear API Key. Key contains invalid characters.")
+            retry = input("   👉 Try again? (y/n, or press Enter to skip): ").strip().lower()
+            if retry != 'y':
+                linear_key = ""
+                break
+            continue
+        
+        # API verification is the definitive check
+        print("   🔍 Verifying Linear API key...")
+        try:
+            import requests
+            query = """
+            query {
+              viewer {
+                id
+              }
+            }
+            """
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": linear_key
+            }
+            response = requests.post(
+                "https://api.linear.app/graphql",
+                json={"query": query},
+                headers=headers,
+                timeout=5
+            )
+            
+            if not response.ok or "errors" in response.json():
+                raise Exception("API key verification failed")
+            
+            print("   ✅ Linear API key verified successfully!")
+            break
+        except Exception as e:
+            print(f"   ⚠️  Linear API key verification failed: {str(e)}")
+            retry = input("   👉 Continue anyway? (y/n): ").strip().lower()
+            if retry == 'y':
+                break
+            print("   Please check your Linear API key and try again.")
 
     # Write to file
     try:

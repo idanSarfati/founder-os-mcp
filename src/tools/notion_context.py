@@ -4,12 +4,26 @@ from notion_client import Client, APIResponseError
 from config.auth_config import load_auth_config
 from src.utils.health import is_update_available, get_update_notice
 
-# Load credentials once
-config = load_auth_config()
+# Lazy initialization: Load config and client only when needed
+# This allows validation to run before these are initialized
+_config = None
+_notion_client = None
 
-# 🔴 OLD (Bug): notion = Client(auth=config["NOTION_API_KEY"])
-# 🟢 NEW (Fix): Use dot notation
-notion = Client(auth=config.notion_api_key)
+def _get_notion_client() -> Client:
+    """Lazy initialization of Notion client. Loads config only when first accessed."""
+    global _config, _notion_client
+    if _notion_client is None:
+        _config = load_auth_config()
+        _notion_client = Client(auth=_config.notion_api_key)
+    return _notion_client
+
+# Create a module-level notion object that delegates to the lazy loader
+class _NotionProxy:
+    """Proxy object that lazily loads the Notion client."""
+    def __getattr__(self, name):
+        return getattr(_get_notion_client(), name)
+
+notion = _NotionProxy()
 # --- Helpers ---
 
 def _extract_title_from_item(item: Dict[str, Any]) -> str:
