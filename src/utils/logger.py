@@ -67,6 +67,9 @@ def setup_logger(name: str = "founder-os") -> logging.Logger:
     if logger.handlers:
         return logger
     
+    # Disable propagation to root logger to prevent duplicate logs
+    logger.propagate = False
+    
     logger.setLevel(logging.INFO)
     
     # Format: [YYYY-MM-DD HH:MM:SS] [LEVEL] Message

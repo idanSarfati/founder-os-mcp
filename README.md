@@ -1,3 +1,5 @@
+
+
 # 🚀 Founder OS (Alpha v0.1)
 
 Founder OS is an intelligent context bridge that connects your development environment (Cursor) directly to your "Source of Truth" (Notion) and data layer (Supabase).
@@ -6,7 +8,7 @@ It eliminates context switching by granting your AI agent real-time access to te
 
 ---
 
-## ⚡ Quick Start (One-Click Installation)
+## ⚡ Quick Start (Zero Friction Setup)
 
 We have automated the setup process. No manual JSON editing or path configuration is required.
 
@@ -15,109 +17,117 @@ We have automated the setup process. No manual JSON editing or path configuratio
 ```bash
 git clone https://github.com/IdanSarfati/founder-os-mcp.git
 cd founder-os-mcp
+
 ```
 
 ### 2. Run the Installer
 
-Execute the master installation script and follow the prompts:
+Execute the master installation script. It will create your environment and check your connections.
 
 ```bash
 python install_script.py
+
 ```
 
-**What the installer handles for you:**
+**What the installer does:**
 
-- ✅ **Dependencies:** Installs all required Python libraries.
-- 🔑 **Authentication:** Safely captures your Notion Token and generates your `.env` file.
-- 🔌 **Auto-Injection:** Automatically detects your Cursor configuration folder (`.cursor/mcp.json`) and registers the server.
+* ✅ **Dependencies:** Installs all Python libraries.
+* 🔑 **Authentication:** Generates your `.env` file securely.
+* 🩺 **Health Check:** Validates your API Keys immediately.
+* 🔌 **Auto-Injection:** Registers the server in `.cursor/mcp.json`.
 
-### 3. Final Step: Refresh Cursor
+### 3. Final Step: Refresh & Verify
 
 1. Open Cursor.
 2. Press `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac).
 3. Type "Developer: Reload Window" and press Enter.
 
+**Verification:**
+Go to **Cursor Settings** (`Ctrl+Shift+J`) > **Features** > **MCP Servers**.
+You should see `founder-os` with a **Green Light** 🟢.
+
 ---
 
-## ✅ Installation Verification
+## 🔄 Updates & Maintenance
 
-To ensure everything is connected correctly:
+The system includes a **"Heartbeat"** mechanism. If a new version is released, the AI will notify you directly in the chat with a `🚨 UPDATE AVAILABLE` alert.
 
-1. Go to **Cursor Settings** (`Ctrl+Shift+J`).
-2. Navigate to **Features > MCP Servers**.
-3. You should see `founder-os` with a **Green Light** 🟢.
-4. If the light is red, click the "Refresh" icon or check the logs in the **Output** panel (select "MCP" from the dropdown).
+**To update, simply run:**
+
+**Windows:**
+Double-click `update.bat` in the project folder.
+
+**Mac / Linux:**
+Run this in your terminal:
+
+```bash
+./update.sh
+
+```
+
+*(This automatically pulls the latest code and updates dependencies).*
 
 ---
 
 ## 🧠 Activating the AI Architect
 
-Whenever you start a new project or a new coding session, open the Composer (`Cmd/Ctrl + I`) and type:
+Whenever you start a new coding session, open the Composer (`Cmd/Ctrl + I`) and type:
 
 ```
 "Initialize Founder OS"
+
 ```
 
 **How it works:**
-
-The agent will execute the `bootstrap_project` tool, injecting a local `.cursorrules` file into your folder. From that moment, the AI will enforce your architecture constraints (e.g., "Do not use SQLite," "Follow Clean Architecture") and will refuse to implement code that violates these rules.
-
-> 💡 **Tip:** To get the best results, share the project's main page (Root Page) with the bot, and it will automatically find all sub-pages on its own.
+The agent will execute the `bootstrap_project` tool, injecting a local `.cursorrules` file into your folder. From that moment, the AI will enforce your architecture constraints (e.g., "Do not use SQLite," "Follow Clean Architecture").
 
 ---
 
 ## 🛠 Core Features (MCP Tools)
 
 | Tool | Capability |
-| :--- | :--- |
+| --- | --- |
 | `search_notion` | Scans your Notion workspace for PRDs, Specs, and Tasks. |
 | `fetch_project_context` | Reads full page content to feed the AI deep project knowledge. |
 | `append_to_page` | Allows the AI to document progress or update logs in Notion. |
 | `list_directory` | Scans local files to prevent duplicate code and maintain structure. |
-| `bootstrap_project` | Deploys the project "Brain" (`.cursorrules`) to any directory. |
-| `list_linear_tasks` | Lists all of your active Linear issues (assigned + team issues, excluding Done/Canceled). |
-| `get_linear_task_details` | Fetches rich details for a specific Linear task (e.g., `IDA-6`) for deep AI context. |
-
----
-
-## 📋 Prerequisites
-
-- **Python 3.10+**
-- **Notion Integration:**
-  - Create an internal integration at [Notion My Integrations](https://www.notion.so/my-integrations).
-  - **Grant Access:** You MUST share each specific Notion page with your integration. On the target page: Click `...` -> `Connections` -> `Connect to` -> Select **Founder OS**.
-- **Supabase:** URL and API Key (Optional for early alpha).
-- **Linear (Optional but Recommended):**
-  - Generate a personal API key in Linear.
-  - Add it to your `.env` as `LINEAR_API_KEY=lin_api_...` in the project root.
-  - When present, Founder OS will automatically enable Linear tools so the AI can see your tasks.
+| `list_linear_tasks` | Lists active issues (assigned + team). |
+| `get_linear_task_details` | Fetches rich details for a specific Linear task (e.g., `IDA-6`). |
+| `bootstrap_project` | Deploys the project "Brain" (`.cursorrules`). |
 
 ---
 
 ## 🔗 Using the Linear Integration
 
-- **List your tasks**
-  - In Cursor Composer, ask: **“List my Linear tasks”** or **“What Linear tasks do I have?”**
-  - The AI will call `list_linear_tasks` and respond with a compact list (identifier, title, team, status, priority).
-- **Drill into a specific task**
-  - Ask: **“Get details for Linear task IDA-6”** (replace with your task key).
-  - The AI will call `get_linear_task_details`, then use the title/labels/description as search terms into Notion specs before suggesting code.
+If you added your Linear API Key, you can manage tasks directly from the chat:
+
+* **See your tasks:** Ask *"List my Linear tasks"* (The AI will show status, priority, and ID).
+* **Start working:** Ask *"Get details for task IDA-6"* (The AI will read the ticket description and search Notion for relevant specs).
 
 ---
 
-## 🔍 Troubleshooting
+## 🔍 Troubleshooting (Flight Recorder)
 
-**Server not appearing in Settings:**
+If the system ignores your context or behaves unexpectedly, we have a built-in logging system.
 
-- Ensure you ran `install_script.py` and performed a "Reload Window".
+1. **Don't panic.** The system records its decision-making process.
+2. Locate the file `founder_os.log` in the project root folder.
+3. Send this file to the support team.
+* *Note: API Keys and sensitive tokens are automatically masked in the logs for your privacy.*
 
-**"Permission Denied" in Notion:**
 
-- Double-check that the specific page or database is shared with your Integration Connection.
 
-**Windows Unicode Errors:**
+---
 
-- If you see charmap errors, ensure your terminal supports UTF-8.
+## 📋 Prerequisites
+
+* **Python 3.10+**
+* **Notion Integration:**
+* Create an internal integration at [Notion My Integrations](https://www.notion.so/my-integrations).
+* **Grant Access:** You MUST share each specific Notion page with your integration (`...` -> `Connections` -> `Connect to` -> `Founder OS`).
+
+
+* **Linear API Key:** (Optional) Add to `.env` to enable task management.
 
 ---
 
