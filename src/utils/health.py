@@ -1,10 +1,6 @@
 import subprocess
 import sys
-import logging
-
-# Basic logger setup in case Cursor misses direct prints
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("founder-os-health")
+from src.utils.logger import logger
 
 # Global state: Update availability flag
 UPDATE_AVAILABLE = False
@@ -24,9 +20,8 @@ def check_for_updates():
         current_file = os.path.abspath(__file__)
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
         
-        sys.stderr.write(f"[DEBUG] check_for_updates: CWD = {os.getcwd()}\n")
-        sys.stderr.write(f"[DEBUG] check_for_updates: Project root = {project_root}\n")
-        sys.stderr.flush()
+        logger.debug(f"check_for_updates: CWD = {os.getcwd()}")
+        logger.debug(f"check_for_updates: Project root = {project_root}")
         
         # 1. Fetch latest data from remote (silently)
         fetch_result = subprocess.run(
@@ -36,8 +31,7 @@ def check_for_updates():
             stderr=subprocess.DEVNULL,
             cwd=project_root
         )
-        sys.stderr.write("[DEBUG] git fetch completed\n")
-        sys.stderr.flush()
+        logger.debug("git fetch completed")
 
         # 2. Detect the default branch (main or master)
         default_branch = None
@@ -50,11 +44,9 @@ def check_for_updates():
                 cwd=project_root
             )
             default_branch = ref_output.strip().split("/")[-1]
-            sys.stderr.write(f"[DEBUG] Detected default branch via symbolic-ref: {default_branch}\n")
-            sys.stderr.flush()
+            logger.debug(f"Detected default branch via symbolic-ref: {default_branch}")
         except (subprocess.CalledProcessError, IndexError) as e:
-            sys.stderr.write(f"[DEBUG] symbolic-ref failed: {e}, trying fallback\n")
-            sys.stderr.flush()
+            logger.debug(f"symbolic-ref failed: {e}, trying fallback")
             # Fallback: try main, then master
             for branch in ["main", "master"]:
                 try:
@@ -64,21 +56,18 @@ def check_for_updates():
                         cwd=project_root
                     )
                     default_branch = branch
-                    sys.stderr.write(f"[DEBUG] Detected default branch via fallback: {default_branch}\n")
-                    sys.stderr.flush()
+                    logger.debug(f"Detected default branch via fallback: {default_branch}")
                     break
                 except subprocess.CalledProcessError:
                     continue
         
         if not default_branch:
-            sys.stderr.write("[DEBUG] No default branch found, returning False\n")
-            sys.stderr.flush()
+            logger.debug("No default branch found, returning False")
             UPDATE_AVAILABLE = False
             return False
 
         # 3. Count how many commits we are behind
-        sys.stderr.write(f"[DEBUG] Checking commits behind: HEAD..origin/{default_branch}\n")
-        sys.stderr.flush()
+        logger.debug(f"Checking commits behind: HEAD..origin/{default_branch}")
         output = subprocess.check_output(
             ["git", "rev-list", "--count", f"HEAD..origin/{default_branch}"], 
             text=True,
@@ -87,27 +76,20 @@ def check_for_updates():
         )
         
         commits_behind = int(output.strip())
-        sys.stderr.write(f"[DEBUG] Commits behind: {commits_behind}\n")
-        sys.stderr.flush()
+        logger.debug(f"Commits behind: {commits_behind}")
         
         UPDATE_AVAILABLE = commits_behind > 0
-        sys.stderr.write(f"[DEBUG] Setting UPDATE_AVAILABLE = {UPDATE_AVAILABLE}\n")
-        sys.stderr.flush()
+        logger.debug(f"Setting UPDATE_AVAILABLE = {UPDATE_AVAILABLE}")
         return UPDATE_AVAILABLE
 
     except (subprocess.CalledProcessError, FileNotFoundError, ValueError) as e:
-        sys.stderr.write(f"[DEBUG] Exception in check_for_updates: {type(e).__name__}: {e}\n")
-        import traceback
-        sys.stderr.write(traceback.format_exc())
-        sys.stderr.flush()
+        logger.exception(f"Exception in check_for_updates: {type(e).__name__}: {e}")
         UPDATE_AVAILABLE = False
         return False
 
 def is_update_available() -> bool:
     """Returns the current update availability status."""
-    import sys
-    sys.stderr.write(f"[DEBUG] is_update_available() called, UPDATE_AVAILABLE = {UPDATE_AVAILABLE}\n")
-    sys.stderr.flush()
+    logger.debug(f"is_update_available() called, UPDATE_AVAILABLE = {UPDATE_AVAILABLE}")
     return UPDATE_AVAILABLE
 
 def get_update_notice() -> str:
@@ -144,6 +126,7 @@ def print_update_banner():
     logger.warning(f"🚀 NEW VERSION AVAILABLE! Please run {script_name}")
     
     # Method 2: Visual banner with flush=True (to prevent buffer blocking)
+    # Keep stderr output for visual banner (logger already logged it)
     msg = [
         f"\n{green}",
         "╔══════════════════════════════════════════════════════════╗",
@@ -157,6 +140,6 @@ def print_update_banner():
         f"{reset}\n"
     ]
     
-    # Print and immediate flush
+    # Print and immediate flush (keep stderr for visual banner)
     for line in msg:
         print(line, file=sys.stderr, flush=True)

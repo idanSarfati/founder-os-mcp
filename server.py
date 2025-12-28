@@ -14,6 +14,8 @@ from src.utils import health
 from src.utils.health import is_update_available, get_update_notice  # Keep these for tool functions
 # Import environment validation
 from src.utils.validation import validate_environment
+# Import logger
+from src.utils.logger import logger
 
 # Pre-flight validation: Check API connectivity before starting server
 # Configure stdout for Windows Unicode support
@@ -24,47 +26,51 @@ if sys.platform == "win32":
         # Python < 3.7 or reconfigure failed, use ASCII fallback
         pass
 
-print("🔍 Validating environment...")
+logger.info("🔍 Validating environment...")
 is_valid, error_msg = validate_environment()
 
 if not is_valid:
-    print("\n" + "="*40)
-    print(error_msg)
-    print("="*40 + "\n")
-    print("The server cannot start due to configuration errors.")
+    logger.error("="*40)
+    logger.error(error_msg)
+    logger.error("="*40)
+    logger.error("The server cannot start due to configuration errors.")
     sys.exit(1)  # Exit cleanly, don't crash
 
-print("✅ Environment looks good! Starting server...")
+logger.info("✅ Environment looks good! Starting server...")
 
 # 1. Validate Auth on Startup
 try:
     config = load_auth_config()
-    print(f"[OK] Auth Loaded. Notion Key present: {bool(config.notion_api_key)}")
+    logger.info(f"Auth Loaded. Notion Key present: {bool(config.notion_api_key)}")
 except ValueError as e:
-    print(f"[WARN] Startup Warning: {e}")
-    print("Run 'python -m config.setup_full' to configure credentials.")
+    logger.warning(f"Startup Warning: {e}")
+    logger.warning("Run 'python -m config.setup_full' to configure credentials.")
 
 # 2. Initialize Linear Client (Optional - graceful degradation if missing)
 linear_client = None
 try:
     from src.integrations.linear_client import LinearClient
     linear_client = LinearClient()
-    print(f"[OK] Linear Client initialized.")
+    logger.info("Linear Client initialized.")
 except (ValueError, ImportError) as e:
-    print(f"[INFO] Linear integration disabled: {e}")
-    print("     Add LINEAR_API_KEY to .env to enable Linear tools.")
+    logger.info(f"Linear integration disabled: {e}")
+    logger.info("Add LINEAR_API_KEY to .env to enable Linear tools.")
 
 # 3. Initialize Server
 mcp = FastMCP("Founder OS")
+logger.info("MCP server initialized: Founder OS")
 
 # 4. Register Core Tools (Always Available)
 mcp.add_tool(search_notion)
 mcp.add_tool(fetch_project_context)
 mcp.add_tool(append_to_page)
 mcp.add_tool(list_directory)
+logger.info("Core tools registered: search_notion, fetch_project_context, append_to_page, list_directory")
 
 # 5. Register Linear Tools (Conditional - only if client is available)
 if linear_client:
+    logger.info("Linear tools registered: list_linear_tasks, get_linear_task_details")
+    
     @mcp.tool()
     def list_linear_tasks() -> str:
         """
@@ -74,27 +80,23 @@ if linear_client:
         and get an overview of work items.
         """
         try:
-            import sys
-            sys.stderr.write(f"[DEBUG] list_linear_tasks called\n")
-            sys.stderr.write(f"[DEBUG] is_update_available() in tool: {is_update_available()}\n")
-            sys.stderr.flush()
+            logger.info("Received request for tool: list_linear_tasks")
+            logger.debug(f"is_update_available() in tool: {is_update_available()}")
             
             response_text = linear_client.get_active_tasks()
             
             if is_update_available():
-                sys.stderr.write("[DEBUG] Injecting update notice into Linear tasks response\n")
+                logger.debug("Injecting update notice into Linear tasks response")
                 notice = get_update_notice()
-                sys.stderr.write(f"[DEBUG] Notice length: {len(notice)}, first 100 chars: {repr(notice[:100])}\n")
-                sys.stderr.write(f"[DEBUG] Response text length before: {len(response_text)}, first 100 chars: {repr(response_text[:100])}\n")
+                logger.debug(f"Notice length: {len(notice)}, Response text length: {len(response_text)}")
                 response_text = notice + response_text
-                sys.stderr.write(f"[DEBUG] Response text length after: {len(response_text)}, first 150 chars: {repr(response_text[:150])}\n")
-                sys.stderr.flush()
             else:
-                sys.stderr.write("[DEBUG] No update available, skipping notice injection\n")
-                sys.stderr.flush()
+                logger.debug("No update available, skipping notice injection")
             
+            logger.info(f"list_linear_tasks completed successfully. Response length: {len(response_text)} chars")
             return response_text
         except Exception as e:
+            logger.exception("Failed to fetch Linear tasks")
             error_msg = f"❌ Error fetching Linear tasks: {str(e)}"
             if is_update_available():
                 error_msg = get_update_notice() + error_msg
@@ -113,11 +115,19 @@ if linear_client:
         "Action Layer" (Linear tasks) and the "Source of Truth" (Notion specs).
         """
         try:
+            logger.info(f"Received request for tool: get_linear_task_details. Task ID: {task_id}")
+            logger.info(f"Detected Linear Task ID: {task_id}")
+            
             response_text = linear_client.get_task_details(task_id)
+            
             if is_update_available():
+                logger.debug("Injecting update notice into task details response")
                 response_text = get_update_notice() + response_text
+            
+            logger.info(f"get_linear_task_details completed successfully. Response length: {len(response_text)} chars")
             return response_text
         except Exception as e:
+            logger.exception(f"Failed to fetch Linear task details for {task_id}")
             error_msg = f"❌ Error fetching task details: {str(e)}"
             if is_update_available():
                 error_msg = get_update_notice() + error_msg
@@ -131,43 +141,47 @@ def bootstrap_project(target_dir: str) -> str:
     The AI should provide the absolute path to the current project root.
     """
     try:
+        logger.info(f"Received request for tool: bootstrap_project. Target directory: {target_dir}")
+        
         # Clean the path
         target_path = os.path.join(os.path.abspath(target_dir), ".cursorrules")
         
         if os.path.exists(target_path):
-             return f"ℹ️ Skipped: .cursorrules already exists at {target_path}"
+            logger.info(f"Bootstrap skipped: .cursorrules already exists at {target_path}")
+            return f"ℹ️ Skipped: .cursorrules already exists at {target_path}"
 
         with open(target_path, "w", encoding="utf-8") as f:
             f.write(GOVERNANCE_RULES)
-            
+        
+        logger.info(f"Bootstrap completed successfully. Installed at: {target_path}")
         return f"✅ Success: Founder OS 'Brain' installed at: {target_path}"
     except Exception as e:
+        logger.exception(f"Failed to bootstrap project at {target_dir}")
         return f"❌ Error initializing: {str(e)}"
 
 # 7. Check for Updates on Startup and Set Global State
 # IMPORTANT: This must run BEFORE mcp.run() to set the global flag
-import sys
-sys.stderr.write("[DEBUG] ===== SERVER STARTUP: Update Check =====\n")
-sys.stderr.flush()
+logger.debug("===== SERVER STARTUP: Update Check =====")
 
 try:
-    sys.stderr.write("[DEBUG] Starting update check...\n")
-    sys.stderr.flush()
+    logger.debug("Starting update check...")
     
     has_updates = health.check_for_updates()  # This sets UPDATE_AVAILABLE global flag
-    sys.stderr.write(f"[DEBUG] check_for_updates() returned: {has_updates}\n")
-    sys.stderr.write(f"[DEBUG] health.UPDATE_AVAILABLE after check: {health.UPDATE_AVAILABLE}\n")
-    sys.stderr.write(f"[DEBUG] is_update_available() after check: {health.is_update_available()}\n")
-    sys.stderr.flush()
+    logger.debug(f"check_for_updates() returned: {has_updates}")
+    logger.debug(f"health.UPDATE_AVAILABLE after check: {health.UPDATE_AVAILABLE}")
+    logger.debug(f"is_update_available() after check: {health.is_update_available()}")
     
     if has_updates:
+        logger.info("Update available detected")
         health.print_update_banner()
+    else:
+        logger.debug("No updates available")
 except Exception as e:
     # Don't fail server startup if update check fails
-    sys.stderr.write(f"[WARN] Update check failed: {e}\n")
-    import traceback
-    sys.stderr.write(traceback.format_exc())
-    sys.stderr.flush()
+    logger.warning(f"Update check failed: {e}")
+    logger.exception("Update check exception details")
 
 if __name__ == "__main__":
+    logger.info("Server started. Environment Validated: Yes.")
+    logger.info("Starting MCP server...")
     mcp.run()

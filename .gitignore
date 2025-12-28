@@ -5,3 +5,7 @@ venv/
 # Debug/development scripts
 debug_check.py
 
+# Log files
+founder_os.log
+*.log
+

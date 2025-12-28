@@ -3,6 +3,7 @@ from typing import List, Optional, Dict, Any
 from notion_client import Client, APIResponseError
 from config.auth_config import load_auth_config
 from src.utils.health import is_update_available, get_update_notice
+from src.utils.logger import logger
 
 # Lazy initialization: Load config and client only when needed
 # This allows validation to run before these are initialized
@@ -76,21 +77,23 @@ def _fetch_all_blocks(block_id: str, depth: int = 0) -> List[str]:
 def search_notion(query: str) -> str:
     """Enhanced search with automatic keyword simplification fallback."""
     try:
+        logger.info(f"Received request for tool: search_notion. Query: {query}")
+        
         # 1. Try the full query first
-        print(f"DEBUG: Attempt 1 with '{query}'", file=sys.stderr)
+        logger.debug(f"Search attempt 1 with '{query}'")
         response = notion.search(query=query, page_size=5)
         items = response.get("results", [])
 
         # 2. If it fails, take the FIRST WORD only (The "Aggressive" Fallback)
         if not items and " " in query:
             simple_query = query.split(" ")[0]
-            print(f"DEBUG: Attempt 2 with '{simple_query}'", file=sys.stderr)
+            logger.debug(f"Search attempt 2 with '{simple_query}' (fallback)")
             response = notion.search(query=simple_query, page_size=10)
             items = response.get("results", [])
 
         # 3. If still nothing, get the 10 most recent pages (The "Nuclear" Fallback)
         if not items:
-            print("DEBUG: Final fallback - fetching recent pages", file=sys.stderr)
+            logger.debug("Final fallback - fetching recent pages")
             response = notion.search(query="", sort={"direction": "descending", "timestamp": "last_edited_time"}, page_size=10)
             items = response.get("results", [])
 
@@ -99,19 +102,21 @@ def search_notion(query: str) -> str:
             title = _extract_title_from_item(item)
             results.append(f"- [{item.get('object')}] {title} (ID: {item.get('id')})")
         
+        logger.info(f"Found {len(results)} documents matching query")
+        
         response_text = "I couldn't find an exact match, but here are the most relevant pages:\n" + "\n".join(results)
         
         # Inject update notice if available
         if is_update_available():
-            sys.stderr.write("[DEBUG] search_notion: Injecting update notice\n")
-            sys.stderr.flush()
+            logger.debug("Injecting update notice into search response")
             notice = get_update_notice()
             response_text = notice + response_text
-            sys.stderr.write(f"[DEBUG] search_notion: Notice injected, response length: {len(response_text)}\n")
-            sys.stderr.flush()
+            logger.debug(f"Notice injected, response length: {len(response_text)} chars")
             
+        logger.info(f"search_notion completed successfully. Response length: {len(response_text)} chars")
         return response_text
     except Exception as e:
+        logger.exception("Failed to search Notion")
         error_msg = f"Search Error: {str(e)}"
         if is_update_available():
             error_msg = get_update_notice() + error_msg
@@ -120,23 +125,34 @@ def search_notion(query: str) -> str:
 def fetch_project_context(page_id: str) -> str:
     """Recursively fetches title and content from a Notion page."""
     if not page_id:
+        logger.warning("fetch_project_context called without page_id")
         error_msg = "Error: page_id required."
         if is_update_available():
             error_msg = get_update_notice() + error_msg
         return error_msg
     
     try:
+        logger.info(f"Received request for tool: fetch_project_context. Page ID: {page_id}")
+        
         page = notion.pages.retrieve(page_id=page_id)
         title = _extract_title_from_item(page)
+        logger.info(f"Fetched Notion Spec: {title}")
+        
         content = _fetch_all_blocks(page_id)
+        content_length = sum(len(line) for line in content)
+        logger.info(f"Fetched content length: {content_length} chars, {len(content)} blocks")
+        
         response_text = f"Title: {title}\n\n" + "\n".join(content)
         
         # Inject update notice if available
         if is_update_available():
+            logger.debug("Injecting update notice into fetch response")
             response_text = get_update_notice() + response_text
-            
+        
+        logger.info(f"fetch_project_context completed successfully. Response length: {len(response_text)} chars")
         return response_text
     except Exception as e:
+        logger.exception(f"Failed to fetch project context for page {page_id}")
         error_msg = f"Error: {str(e)}"
         if is_update_available():
             error_msg = get_update_notice() + error_msg
@@ -144,12 +160,19 @@ def fetch_project_context(page_id: str) -> str:
 
 def append_to_page(page_id: str, content: str) -> str:
     """Appends a new paragraph block to a Notion page."""
-    if not page_id or not content: return "Error: page_id and content required."
+    if not page_id or not content:
+        logger.warning("append_to_page called without page_id or content")
+        return "Error: page_id and content required."
     try:
+        logger.info(f"Received request for tool: append_to_page. Page ID: {page_id}, Content length: {len(content)} chars")
+        
         notion.blocks.children.append(
             block_id=page_id,
             children=[{"object": "block", "type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": content}}]}}]
         )
+        
+        logger.info("append_to_page completed successfully")
         return "Success."
     except Exception as e:
+        logger.exception(f"Failed to append to page {page_id}")
         return f"Error: {str(e)}"

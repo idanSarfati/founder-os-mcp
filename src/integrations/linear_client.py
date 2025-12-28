@@ -11,6 +11,7 @@ from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
 from config.auth_config import load_auth_config
+from src.utils.logger import logger
 
 
 class LinearClient:
@@ -59,6 +60,10 @@ class LinearClient:
             "Authorization": self.api_key
         }
         
+        # Log query type (extract operation name from query for better logging)
+        query_type = query.strip().split()[1] if query.strip().startswith("query") else "mutation"
+        logger.debug(f"Executing Linear GraphQL {query_type} query")
+        
         try:
             response = requests.post(
                 self.endpoint,
@@ -80,19 +85,24 @@ class LinearClient:
                     error_msg += f" - GraphQL Errors: {data['errors']}"
                 elif response.text:
                     error_msg += f" - Response: {response.text[:500]}"
+                logger.error(f"Linear API HTTP error: {error_msg}")
                 raise RuntimeError(f"Linear API Error: {error_msg}")
             
             if "errors" in data:
+                logger.error(f"Linear GraphQL errors: {data['errors']}")
                 raise RuntimeError(f"Linear GraphQL Error: {data['errors']}")
-                
+            
+            logger.debug(f"Linear GraphQL query completed successfully")
             return data
             
         except requests.exceptions.RequestException as e:
+            logger.exception("Linear API connection failed")
             raise RuntimeError(f"Linear Connection Failed: {str(e)}")
         except RuntimeError:
             # Re-raise RuntimeError as-is (already formatted)
             raise
         except Exception as e:
+            logger.exception("Unexpected error in Linear API query")
             raise RuntimeError(f"Unexpected error: {str(e)}")
 
     def get_active_tasks(self) -> str:
@@ -164,14 +174,20 @@ class LinearClient:
         data = self._execute_query(query)
         viewer = data["data"]["viewer"]
         
+        logger.debug(f"Fetching active tasks for user: {viewer.get('name', 'Unknown')}")
+        
         # Collect all issues: start with assigned issues
         all_issues = {}
         assigned_issues = viewer.get("assignedIssues", {}).get("nodes", [])
+        logger.debug(f"Found {len(assigned_issues)} assigned issues")
+        
         for issue in assigned_issues:
             all_issues[issue["identifier"]] = issue
         
         # Add team issues (deduplicate by identifier)
         teams = viewer.get("teams", {}).get("nodes", [])
+        logger.debug(f"Processing {len(teams)} teams")
+        
         for team in teams:
             team_issues = team.get("issues", {}).get("nodes", [])
             for issue in team_issues:
@@ -180,8 +196,10 @@ class LinearClient:
         
         # Convert back to list
         issues = list(all_issues.values())
+        logger.info(f"Retrieved {len(issues)} total active tasks (deduplicated)")
         
         if not issues:
+            logger.info("No active tasks found")
             return f"User {viewer['name']} has no active tasks in their teams."
 
         # Format output for LLM consumption
@@ -223,6 +241,8 @@ class LinearClient:
         Returns:
             Formatted string with detailed task information and semantic guidance.
         """
+        logger.info(f"Fetching task details for identifier: {task_identifier}")
+        
         # Normalize identifier for robustness (Linear identifiers are typically uppercase)
         normalized_identifier = task_identifier.upper().strip()
 
@@ -232,6 +252,7 @@ class LinearClient:
         #   1) Parse the human identifier into (team_key, number)
         #   2) Filter issues by these fields.
         if "-" not in normalized_identifier:
+            logger.warning(f"Invalid Linear task format: {task_identifier}")
             return (
                 f"⚠️ Task '{task_identifier}' is not in a valid Linear format. "
                 f"Expected something like 'IDA-6' (TEAMKEY-NUMBER)."
@@ -241,10 +262,13 @@ class LinearClient:
         try:
             issue_number = int(number_str)
         except ValueError:
+            logger.warning(f"Invalid numeric part in task identifier: {task_identifier}")
             return (
                 f"⚠️ Task '{task_identifier}' has an invalid numeric part. "
                 f"Expected something like 'IDA-6' where '6' is a number."
             )
+        
+        logger.debug(f"Parsed task identifier: team_key={team_key}, number={issue_number}")
 
         # Single-query approach: filter issues by team key + number and return the first match
         query = """
@@ -288,12 +312,14 @@ class LinearClient:
         # Defensive extraction and validation to prevent AI retry loops
         issues = data.get("data", {}).get("issues", {}).get("nodes", [])
         if not issues:
+            logger.warning(f"Task not found in Linear: {task_identifier}")
             return (
                 f"⚠️ Task '{task_identifier}' not found in Linear. "
                 f"Please verify the ID (e.g., 'IDA-6') and try again."
             )
 
         issue = issues[0]
+        logger.info(f"Successfully retrieved task details for {task_identifier}: {issue.get('title', 'Untitled')}")
 
         desc = issue.get("description") or "No description provided."
         labels_nodes = issue.get("labels", {}).get("nodes", []) or []
