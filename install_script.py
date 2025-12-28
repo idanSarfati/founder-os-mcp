@@ -31,8 +31,12 @@ def install_dependencies():
 def setup_env():
     print("\n[2/3] 🔑 Configuration")
     
+    # Get project root (where this script is located)
+    project_root = Path(__file__).parent
+    env_file = project_root / ".env"
+    
     # Check if file exists and whether to overwrite it
-    if os.path.exists(".env"):
+    if env_file.exists():
         print("   ℹ️  Found existing .env file.")
         should_overwrite = input("   👉 Do you want to re-configure keys? (y/n): ").strip().lower()
         if should_overwrite != 'y':
@@ -142,7 +146,7 @@ def setup_env():
 
     # Write to file
     try:
-        with open(".env", "w", encoding="utf-8") as f:
+        with open(env_file, "w", encoding="utf-8") as f:
             f.write(f"NOTION_API_KEY={notion_token}\n")
             if linear_key:
                 f.write(f"LINEAR_API_KEY={linear_key}\n")
@@ -168,12 +172,13 @@ def inject_mcp():
             pass
 
     # Set up the server in the exact structure that Cursor expects
-    current_dir = os.getcwd()
-    server_path = os.path.join(current_dir, "server.py")
+    # Use script's directory instead of cwd to ensure correct path regardless of where script is run from
+    project_root = Path(__file__).parent
+    server_path = project_root / "server.py"
     
     config["mcpServers"][MCP_SERVER_NAME] = {
         "command": sys.executable,
-        "args": [server_path],
+        "args": [str(server_path)],
         "enabled": True  # Critical for immediate appearance
     }
 

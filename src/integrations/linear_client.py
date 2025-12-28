@@ -7,8 +7,9 @@ encapsulating task retrieval and formatting for LLM consumption.
 
 import os
 import requests
+from pathlib import Path
 from typing import Optional, Dict, Any
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 from config.auth_config import load_auth_config
 from src.utils.logger import logger
@@ -33,7 +34,18 @@ class LinearClient:
         # Centralized config loading (kept for backward compatibility
         # with existing auth setup and .env handling)
         load_auth_config()
-        load_dotenv()
+        # Use find_dotenv() to locate .env file relative to project root
+        env_path = find_dotenv()
+        if env_path:
+            load_dotenv(dotenv_path=env_path)
+        else:
+            # Fallback: try loading from project root relative to this file
+            project_root = Path(__file__).parent.parent.parent
+            env_file = project_root / ".env"
+            if env_file.exists():
+                load_dotenv(dotenv_path=str(env_file))
+            else:
+                load_dotenv()
 
         self.api_key = os.getenv("LINEAR_API_KEY")
         self.endpoint = "https://api.linear.app/graphql"

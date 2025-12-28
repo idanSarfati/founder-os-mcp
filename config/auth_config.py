@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
+from pathlib import Path
 from typing import Optional
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 
 @dataclass
@@ -31,8 +32,23 @@ def load_auth_config() -> AuthConfig:
     """
     Loads configuration from environment variables.
     Raises ValueError if required keys (like Notion) are missing.
+    
+    Uses find_dotenv() to locate .env file relative to project root,
+    ensuring it works regardless of the current working directory.
     """
-    load_dotenv()
+    # Find .env file relative to this file's location (project root)
+    env_path = find_dotenv()
+    if env_path:
+        load_dotenv(dotenv_path=env_path)
+    else:
+        # Fallback: try loading from project root relative to this file
+        project_root = Path(__file__).parent.parent
+        env_file = project_root / ".env"
+        if env_file.exists():
+            load_dotenv(dotenv_path=str(env_file))
+        else:
+            # Last resort: try current directory
+            load_dotenv()
 
     notion_key = os.getenv("NOTION_API_KEY")
     if not notion_key:
