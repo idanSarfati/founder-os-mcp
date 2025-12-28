@@ -7,6 +7,8 @@ from src.tools.notion_context import search_notion, fetch_project_context, appen
 from src.tools.fs import list_directory
 # We import the RULES string, but NOT the install logic
 from config.setup_governance import GOVERNANCE_RULES
+# Import health check utilities
+from src.utils.health import check_for_updates, print_update_banner
 
 # 1. Validate Auth on Startup
 try:
@@ -87,6 +89,10 @@ def bootstrap_project(target_dir: str) -> str:
         return f"✅ Success: Founder OS 'Brain' installed at: {target_path}"
     except Exception as e:
         return f"❌ Error initializing: {str(e)}"
+
+# 7. Check for Updates on Startup
+if check_for_updates():
+    print_update_banner()
 
 if __name__ == "__main__":
     mcp.run()
