@@ -1,13 +1,11 @@
-import os
 import sys
 from mcp.server.fastmcp import FastMCP
 from config.auth_config import load_auth_config
 
 # Import modular tools
 from src.tools.notion_context import search_notion, fetch_project_context, append_to_page
-from src.tools.fs import list_directory
-# We import the RULES string, but NOT the install logic
-from config.setup_governance import GOVERNANCE_RULES
+from src.tools.fs import list_directory, view_logs
+from src.tools.project_ops import bootstrap_project
 # Import health check utilities
 # Import module directly to avoid Python import reference issues with global variables
 from src.utils import health
@@ -65,7 +63,8 @@ mcp.add_tool(search_notion)
 mcp.add_tool(fetch_project_context)
 mcp.add_tool(append_to_page)
 mcp.add_tool(list_directory)
-logger.info("Core tools registered: search_notion, fetch_project_context, append_to_page, list_directory")
+mcp.add_tool(view_logs)
+logger.info("Core tools registered: search_notion, fetch_project_context, append_to_page, list_directory, view_logs")
 
 # 5. Register Linear Tools (Conditional - only if client is available)
 if linear_client:
@@ -134,30 +133,8 @@ if linear_client:
             return error_msg
 
 # 6. Register Bootstrap Tool
-@mcp.tool()
-def bootstrap_project(target_dir: str) -> str:
-    """
-    INITIALIZE COMMAND: Installs the Founder OS 'Brain' (.cursorrules) into the specified project folder.
-    The AI should provide the absolute path to the current project root.
-    """
-    try:
-        logger.info(f"Received request for tool: bootstrap_project. Target directory: {target_dir}")
-        
-        # Clean the path
-        target_path = os.path.join(os.path.abspath(target_dir), ".cursorrules")
-        
-        if os.path.exists(target_path):
-            logger.info(f"Bootstrap skipped: .cursorrules already exists at {target_path}")
-            return f"ℹ️ Skipped: .cursorrules already exists at {target_path}"
-
-        with open(target_path, "w", encoding="utf-8") as f:
-            f.write(GOVERNANCE_RULES)
-        
-        logger.info(f"Bootstrap completed successfully. Installed at: {target_path}")
-        return f"✅ Success: Founder OS 'Brain' installed at: {target_path}"
-    except Exception as e:
-        logger.exception(f"Failed to bootstrap project at {target_dir}")
-        return f"❌ Error initializing: {str(e)}"
+mcp.add_tool(bootstrap_project)
+logger.info("Bootstrap tool registered: bootstrap_project")
 
 # 7. Check for Updates on Startup and Set Global State
 # IMPORTANT: This must run BEFORE mcp.run() to set the global flag
