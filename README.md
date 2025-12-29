@@ -91,7 +91,6 @@ The agent will execute the `bootstrap_project` tool, injecting a local `.cursorr
 | `fetch_project_context` | Reads full page content to feed the AI deep project knowledge. |
 | `append_to_page` | Allows the AI to document progress or update logs in Notion. |
 | `list_directory` | Scans local files to prevent duplicate code and maintain structure. |
-| `view_logs` | Shows recent entries from the Founder OS log file for debugging. |
 | `list_linear_tasks` | Lists active issues (assigned + team). |
 | `get_linear_task_details` | Fetches rich details for a specific Linear task (e.g., `IDA-6`). |
 | `bootstrap_project` | Deploys the project "Brain" (`.cursorrules`). |

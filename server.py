@@ -4,7 +4,7 @@ from config.auth_config import load_auth_config
 
 # Import modular tools
 from src.tools.notion_context import search_notion, fetch_project_context, append_to_page
-from src.tools.fs import list_directory, view_logs
+from src.tools.fs import list_directory
 from src.tools.project_ops import bootstrap_project
 # Import health check utilities
 # Import module directly to avoid Python import reference issues with global variables
@@ -63,8 +63,7 @@ mcp.add_tool(search_notion)
 mcp.add_tool(fetch_project_context)
 mcp.add_tool(append_to_page)
 mcp.add_tool(list_directory)
-mcp.add_tool(view_logs)
-logger.info("Core tools registered: search_notion, fetch_project_context, append_to_page, list_directory, view_logs")
+logger.info("Core tools registered: search_notion, fetch_project_context, append_to_page, list_directory")
 
 # 5. Register Linear Tools (Conditional - only if client is available)
 if linear_client:

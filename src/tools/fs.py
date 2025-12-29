@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 from src.utils.health import is_update_available, get_update_notice
 from src.utils.logger import logger
@@ -54,61 +53,6 @@ def list_directory(root_path: str = ".", max_depth: int = 3) -> str:
         return response_text
     except Exception as e:
         logger.exception(f"Failed to list directory: {root_path}")
-        error_msg = f"Error: {str(e)}"
-        if is_update_available():
-            error_msg = get_update_notice() + error_msg
-        return error_msg
-
-def view_logs(lines: int = 50) -> str:
-    """View the most recent entries from the Founder OS log file."""
-    try:
-        logger.info(f"Received request for tool: view_logs. Lines requested: {lines}")
-
-        # Get project root and log file path
-        project_root = Path(__file__).parent.parent.parent
-        log_file = project_root / "founder_os.log"
-
-        if not log_file.exists():
-            logger.warning("Log file does not exist")
-            error_msg = "Error: Log file not found. The system may not have generated any logs yet."
-            if is_update_available():
-                error_msg = get_update_notice() + error_msg
-            return error_msg
-
-        # Read the last N lines from the log file
-        try:
-            with open(log_file, 'r', encoding='utf-8') as f:
-                all_lines = f.readlines()
-
-            # Get the last N lines (or all lines if fewer than N exist)
-            recent_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
-
-            response_text = f"**Recent Founder OS Logs** (Last {len(recent_lines)} entries)\n\n"
-            response_text += "".join(recent_lines)
-
-            # Add file info
-            file_size = log_file.stat().st_size
-            response_text += f"\n---\nLog file: {log_file.name} ({file_size} bytes)"
-
-            logger.info(f"Retrieved {len(recent_lines)} log entries")
-
-            # Inject update notice if available
-            if is_update_available():
-                logger.debug("Injecting update notice into view_logs response")
-                response_text = get_update_notice() + response_text
-
-            logger.info(f"view_logs completed successfully. Response length: {len(response_text)} chars")
-            return response_text
-
-        except Exception as e:
-            logger.exception("Failed to read log file")
-            error_msg = f"Error reading log file: {str(e)}"
-            if is_update_available():
-                error_msg = get_update_notice() + error_msg
-            return error_msg
-
-    except Exception as e:
-        logger.exception(f"Failed to view logs")
         error_msg = f"Error: {str(e)}"
         if is_update_available():
             error_msg = get_update_notice() + error_msg
