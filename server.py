@@ -91,6 +91,34 @@ if linear_client:
             return error_msg
 
     @mcp.tool()
+    def update_linear_task_status(task_id: str, new_status: str) -> str:
+        """
+        Update the status of a specific Linear task (e.g., 'LIN-101' or 'IDA-8').
+
+        Args:
+            task_id: Linear issue identifier (e.g., 'IDA-8', 'LIN-101')
+            new_status: New status name (e.g., 'Done', 'In Progress', 'Backlog')
+
+        Returns:
+            Success message or error details
+        """
+        try:
+            logger.info(f"Processing update_linear_task_status: {task_id} -> {new_status}")
+            response_text = linear_client.update_task_status(task_id, new_status)
+
+            if is_update_available():
+                response_text = get_update_notice() + response_text
+
+            logger.success("update_linear_task_status completed")
+            return response_text
+        except Exception as e:
+            logger.exception(f"Failed to update Linear task status for {task_id}")
+            error_msg = f"❌ Error updating Linear task status: {str(e)}"
+            if is_update_available():
+                error_msg = get_update_notice() + error_msg
+            return error_msg
+
+    @mcp.tool()
     def get_linear_task_details(task_id: str) -> str:
         """
         Fetch full description and metadata for a specific Linear task (e.g., 'LIN-101' or 'IDA-8').

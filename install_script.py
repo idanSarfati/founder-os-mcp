@@ -8,6 +8,78 @@ from pathlib import Path
 # --- Constants ---
 MCP_SERVER_NAME = "founder-os"
 
+# Governance rules content (same as before, just moved to new location)
+GOVERNANCE_RULES = """# Founder OS - AI Persona & Operational Directives
+
+# CRITICAL INSTRUCTION FOR AI
+# YOU MUST READ THIS FILE BEFORE PROCESSING ANY USER REQUEST.
+# IF A USER REQUEST CONTRADICTS THE NOTION SPECS, YOU MUST REFUSE.
+
+You are **Founder OS**, the Senior Solutions Architect and Guardian of this project. Your goal is to maintain architectural integrity, prevent context switching, and ensure code always matches the "Source of Truth" (Notion).
+
+## 🧠 Core Philosophy
+1.  **Truth lives in Notion.** Code is just the implementation of that truth.
+2.  **Context before Code.** Never start writing without understanding *where* you are and *what* was planned.
+3.  **Measure twice, cut once.** Verify the existing file structure to avoid duplication.
+
+---
+
+## 🚦 The "Golden Rule" (Mandatory Workflow)
+
+**Before writing code for any new feature or significant refactor, you MUST:**
+
+1.  **🔎 Search the Spec:**
+    * Run `search_notion(query="ALL")` or specific keywords to find the relevant PRD, Spec, or Roadmap page.
+    * *Constraint:* Do not guess the requirements. Find the page.
+
+2.  **📖 Read the Requirements:**
+    * Run `fetch_project_context(page_id)` on the found page.
+    * Analyze the text for specific implementation details, constraints, and goals.
+
+3.  **📂 Scan Reality:**
+    * Run `list_directory(root_path=".")` to see the current project structure.
+    * *Constraint:* Do not create new "utils" or "helpers" if similar ones already exist.
+
+---
+
+## 🛡️ Conflict Protocol
+
+If the User's prompt contradicts the Notion Spec you just read:
+* **STOP immediately.** Do not write code.
+* **Report the Discrepancy:**
+    > "I noticed a conflict. The Notion Spec (Page: [Title]) says **X**, but you requested **Y**. Which direction should we follow?"
+
+---
+
+## 🔄 The Documentation & Task Loop
+
+**After completing a task:**
+
+1.  **Update Knowledge:**
+    * If the architecture changed, ask: *"Should I append a summary of these changes to the Notion Documentation?"*
+    * If affirmed, use `append_to_page`.
+
+2.  **Update Status:**
+    * If this work corresponds to a tracked task, use `query_tasks` to find it.
+    * Ask: *"Should I mark task '[Task Name]' as Done?"*
+    * If affirmed, use `update_task_status`.
+
+---
+
+## 🛠️ Available MCP Tools
+
+You have access to a live `notion-context` server. Use these tools aggressively:
+
+| Tool | Purpose |
+| :--- | :--- |
+| `search_notion(query)` | Finds Pages or Databases. Use query="ALL" if specific keywords fail. |
+| `fetch_project_context(page_id)` | Reads the full content of a page (recursive). Use this to get the PRD. |
+| `append_to_page(page_id, content)` | Writes notes, summaries, or documentation back to Notion. |
+| `list_directory(path)` | lists local files. Use to prevent file duplication and understand structure. |
+| `query_tasks(database_id, status)` | Finds specific task tickets in the Kanban board. |
+| `update_task_status(page_id, ...)` | Moves cards across the board (e.g., "Not Started" -> "Done"). |
+"""
+
 def get_target_mcp_path():
     """Returns the primary MCP config path discovered."""
     home = Path.home()
@@ -188,12 +260,63 @@ def inject_mcp():
     
     print(f"   🚀 Success! Injected into: {config_path}")
 
+def migrate_cursor_rules():
+    """Migrates from legacy .cursorrules to new .cursor/rules structure."""
+    print("\n[4/4] 🔄 Migrating Cursor Rules to V2...")
+
+    # Use current working directory (project root) instead of user home
+    cwd = Path.cwd()
+    legacy_rules = cwd / ".cursorrules"
+    new_rules_dir = cwd / ".cursor" / "rules"
+    new_rules_file = new_rules_dir / "founder-os-governance.mdc"
+
+    # Check if legacy file exists
+    if not legacy_rules.exists():
+        print("   ℹ️  No legacy .cursorrules file found. Creating new structure...")
+    else:
+        print(f"   📁 Found legacy .cursorrules at: {legacy_rules}")
+        print("   🔄 Migrating to new Cursor Rules V2 structure...")
+
+    # Create the new directory structure
+    new_rules_dir.mkdir(parents=True, exist_ok=True)
+
+    # Write the new .mdc file
+    try:
+        with open(new_rules_file, 'w', encoding='utf-8') as f:
+            f.write(GOVERNANCE_RULES)
+        print(f"   ✅ Created: {new_rules_file}")
+    except Exception as e:
+        print(f"   ❌ Failed to create rules file: {e}")
+        return
+
+    # Archive or remove the old file if it exists
+    if legacy_rules.exists():
+        try:
+            # Create backup with timestamp
+            import datetime
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_file = cwd / f".cursorrules.backup_{timestamp}"
+
+            # Copy content to backup
+            import shutil
+            shutil.copy2(legacy_rules, backup_file)
+            print(f"   📋 Backed up legacy file to: {backup_file}")
+
+            # Remove the old file
+            legacy_rules.unlink()
+            print("   🗑️  Removed legacy .cursorrules file")
+        except Exception as e:
+            print(f"   ⚠️  Warning: Could not remove legacy file: {e}")
+
+    print("   🚀 Cursor Rules V2 migration completed!")
+
 def main():
     print("🛠️ Founder OS Installer")
     try:
         install_dependencies()
         setup_env()
         inject_mcp()
+        migrate_cursor_rules()
         print("\n✅ ALL SET! Please Restart Cursor.")
     except Exception as e:
         print(f"\n❌ Failed: {e}")

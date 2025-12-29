@@ -356,3 +356,136 @@ class LinearClient:
 
         return "\n".join(output)
 
+    def update_task_status(self, task_identifier: str, new_status: str) -> str:
+        """
+        Updates the status of a specific Linear task.
+
+        Args:
+            task_identifier: Linear issue identifier (e.g., "IDA-8", "LIN-101")
+            new_status: New status name (e.g., "Done", "In Progress", "Backlog")
+
+        Returns:
+            Success message or error details
+        """
+        logger.info(f"Updating task {task_identifier} status to: {new_status}")
+
+        # First, find the task to get its ID (needed for mutation)
+        # Parse identifier like before
+        normalized_identifier = task_identifier.upper().strip()
+        if "-" not in normalized_identifier:
+            return f"Warning: Invalid task identifier format: {task_identifier}"
+
+        team_key, number_str = normalized_identifier.split("-", 1)
+        try:
+            issue_number = int(number_str)
+        except ValueError:
+            return f"Warning: Invalid task number in identifier: {task_identifier}"
+
+        # Query to get the issue ID
+        find_query = """
+        query($teamKey: String!, $number: Float!) {
+          issues(
+            filter: {
+              number: { eq: $number }
+              team: { key: { eq: $teamKey } }
+            }
+            first: 1
+          ) {
+            nodes {
+              id
+              identifier
+              title
+              state {
+                name
+              }
+            }
+          }
+        }
+        """
+
+        try:
+            data = self._execute_query(
+                find_query,
+                {"teamKey": team_key, "number": issue_number}
+            )
+
+            issues = data.get("data", {}).get("issues", {}).get("nodes", [])
+            if not issues:
+                return f"Warning: Task '{task_identifier}' not found in Linear"
+
+            issue = issues[0]
+            issue_id = issue["id"]
+            current_status = issue["state"]["name"]
+            title = issue["title"]
+
+            logger.debug(f"Found task {task_identifier} (ID: {issue_id}) with current status: {current_status}")
+
+            # Get available states for the team to validate the new status
+            states_query = """
+            query($teamKey: String!) {
+              teams(filter: { key: { eq: $teamKey } }) {
+                nodes {
+                  states {
+                    nodes {
+                      id
+                      name
+                    }
+                  }
+                }
+              }
+            }
+            """
+
+            states_data = self._execute_query(states_query, {"teamKey": team_key})
+            teams = states_data.get("data", {}).get("teams", {}).get("nodes", [])
+            if not teams:
+                return f"Warning: Could not retrieve team states for {team_key}"
+
+            team_data = teams[0]
+
+            available_states = {state["name"]: state["id"] for state in team_data.get("states", {}).get("nodes", [])}
+            logger.debug(f"Available states for team {team_key}: {list(available_states.keys())}")
+
+            if new_status not in available_states:
+                return f"Warning: Invalid status '{new_status}'. Available states: {', '.join(available_states.keys())}"
+
+            # Update the issue status
+            update_mutation = """
+            mutation($issueId: String!, $stateId: String!) {
+              issueUpdate(
+                id: $issueId
+                input: {
+                  stateId: $stateId
+                }
+              ) {
+                success
+                issue {
+                  identifier
+                  title
+                  state {
+                    name
+                  }
+                }
+              }
+            }
+            """
+
+            update_data = self._execute_query(
+                update_mutation,
+                {
+                    "issueId": issue_id,
+                    "stateId": available_states[new_status]
+                }
+            )
+
+            result = update_data.get("data", {}).get("issueUpdate")
+            if result and result.get("success"):
+                updated_issue = result.get("issue", {})
+                return f"Success: Updated {updated_issue.get('identifier', task_identifier)} '{updated_issue.get('title', title)}' to status: {updated_issue.get('state', {}).get('name', new_status)}"
+            else:
+                return f"Error: Failed to update task status for {task_identifier}"
+
+        except Exception as e:
+            logger.exception(f"Error updating task status for {task_identifier}")
+            return f"Error: Failed to update task {task_identifier}: {str(e)}"
+
