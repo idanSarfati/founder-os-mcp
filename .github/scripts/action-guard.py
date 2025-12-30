@@ -13,7 +13,12 @@ import json
 import requests
 import subprocess
 from typing import Optional, Dict, Any
-import google.generativeai as genai
+try:
+    import google.genai as genai
+    USE_NEW_PACKAGE = True
+except ImportError:
+    import google.generativeai as genai
+    USE_NEW_PACKAGE = False
 
 
 class ActionGuard:
@@ -29,8 +34,17 @@ class ActionGuard:
             sys.exit(1)
 
         # Configure Gemini
-        genai.configure(api_key=os.getenv('GEMINI_API_KEY', ''))
-        self.model = genai.GenerativeModel('gemini-pro')
+        api_key = os.getenv('GEMINI_API_KEY', '')
+        if not api_key:
+            print("❌ GEMINI_API_KEY environment variable not set")
+            sys.exit(1)
+
+        if USE_NEW_PACKAGE:
+            genai.configure(api_key=api_key)
+            self.client = genai.Client()
+        else:
+            genai.configure(api_key=api_key)
+            self.model = genai.GenerativeModel('gemini-pro')
 
     def get_pr_title(self) -> str:
         """Get PR title from GitHub API"""
@@ -65,7 +79,13 @@ class ActionGuard:
     def extract_linear_issue_id(self, pr_title: str) -> Optional[str]:
         """Extract Linear issue ID from PR title (e.g., [FOS-101])"""
         match = re.search(r'\[([A-Z]+-\d+)\]', pr_title)
-        return match.group(1) if match else None
+        if match:
+            return match.group(1)
+        else:
+            print("❌ Could not extract Linear issue ID from PR title"            print(f"   PR Title: {pr_title}")
+            print("   Expected format: [ISSUE-ID] in title (e.g., [ENG-5], [FOS-101])")
+            print("   Please update your PR title to include the Linear issue ID")
+            return None
 
     def query_linear_issue(self, issue_id: str) -> Optional[Dict[str, Any]]:
         """Query Linear API for issue details"""
@@ -189,8 +209,15 @@ class ActionGuard:
             If violations are found, briefly explain why in the next line (max 100 words).
             """
 
-            response = self.model.generate_content(prompt)
-            result = response.text.strip()
+            if USE_NEW_PACKAGE:
+                response = self.client.models.generate_content(
+                    model='gemini-2.0-flash-exp',
+                    contents=prompt
+                )
+                result = response.text.strip()
+            else:
+                response = self.model.generate_content(prompt)
+                result = response.text.strip()
 
             # Write result to file for workflow to read
             with open('validation_result.txt', 'w') as f:
