@@ -15,10 +15,16 @@ import subprocess
 from typing import Optional, Dict, Any
 try:
     import google.genai as genai
+    # Test if the Client class works
+    test_client = genai.Client(api_key='test')
     USE_NEW_PACKAGE = True
-except ImportError:
-    import google.generativeai as genai
-    USE_NEW_PACKAGE = False
+except (ImportError, Exception):
+    try:
+        import google.generativeai as genai
+        USE_NEW_PACKAGE = False
+    except ImportError:
+        print("❌ Neither google.genai nor google.generativeai packages are available")
+        sys.exit(1)
 
 
 class ActionGuard:
@@ -39,12 +45,16 @@ class ActionGuard:
             print("❌ GEMINI_API_KEY environment variable not set")
             sys.exit(1)
 
-        if USE_NEW_PACKAGE:
-            genai.configure(api_key=api_key)
-            self.client = genai.Client()
-        else:
-            genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-pro')
+        try:
+            if USE_NEW_PACKAGE:
+                self.client = genai.Client(api_key=api_key)
+            else:
+                genai.configure(api_key=api_key)
+                self.model = genai.GenerativeModel('gemini-pro')
+        except Exception as e:
+            print(f"❌ Failed to initialize Google AI client: {e}")
+            print("   Please check your GEMINI_API_KEY and package installation")
+            sys.exit(1)
 
     def get_pr_title(self) -> str:
         """Get PR title from GitHub API"""
@@ -249,6 +259,7 @@ class ActionGuard:
 
         except Exception as e:
             print(f"❌ LLM validation failed: {e}")
+            print(f"   Using package: {'google.genai' if USE_NEW_PACKAGE else 'google.generativeai'}")
             # Write error to file
             with open('validation_result.txt', 'w') as f:
                 f.write(f"LLM validation failed: {str(e)}")
