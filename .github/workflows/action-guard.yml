@@ -52,16 +52,15 @@ jobs:
             console.log('Error reading validation result:', error);
           }
 
+          const body = '🚫 **Action Guard Failed**\n\n' +
+            'The code changes in this PR violate the Notion specification linked to the Linear issue.\n\n' +
+            '**Violation Details:**\n' +
+            violationDetails + '\n\n' +
+            'Please review the requirements in the linked Notion page and update your code accordingly.';
+
           github.rest.issues.createComment({
             issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
-            body: `🚫 **Action Guard Failed**
-
-The code changes in this PR violate the Notion specification linked to the Linear issue.
-
-**Violation Details:**
-${violationDetails}
-
-Please review the requirements in the linked Notion page and update your code accordingly.`
+            body: body
           })
