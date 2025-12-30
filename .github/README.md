@@ -26,6 +26,26 @@ feat: implement user login [ENG-5]
 fix: button color validation [FOS-101]
 ```
 
+### Skip Validation for Infrastructure Changes
+
+For infrastructure, CI/CD, and setup changes that don't need specification validation, use these patterns:
+
+**Automatic Skip Keywords:**
+```
+infra: fix workflow permissions
+ci: update build config
+chore: update dependencies
+workflow: add github action
+permissions: grant api access
+setup: configure environment
+```
+
+**Explicit Skip Tag:**
+```
+fix: button color [SKIP]
+refactor: code cleanup [SKIP]
+```
+
 ### Linear Issue Setup
 The Linear issue description must contain a link to the Notion page with requirements:
 ```
