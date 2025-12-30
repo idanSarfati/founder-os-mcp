@@ -13,11 +13,12 @@ import json
 import requests
 import subprocess
 from typing import Optional, Dict, Any
-
 try:
     import google.genai as genai
+    # Test if the Client class works
+    test_client = genai.Client(api_key='test')
     USE_NEW_PACKAGE = True
-except ImportError:
+except (ImportError, Exception):
     try:
         import google.generativeai as genai
         USE_NEW_PACKAGE = False
@@ -28,11 +29,11 @@ except ImportError:
 
 class ActionGuard:
     def __init__(self):
-        self.pr_title = os.getenv('PR_TITLE', '')
-        self.pr_number = os.getenv('PR_NUMBER', '')
-        self.github_token = os.getenv('GITHUB_TOKEN', '')
-        self.notion_token = os.getenv('NOTION_TOKEN', '')
-        self.linear_api_key = os.getenv('LINEAR_API_KEY', '')
+        self.notion_token = os.getenv('NOTION_TOKEN')
+        self.linear_api_key = os.getenv('LINEAR_API_KEY')
+        self.github_token = os.getenv('GITHUB_TOKEN')
+        self.pr_title = os.getenv('PR_TITLE') or self.get_pr_title()
+        self.pr_number = os.getenv('PR_NUMBER') or self.get_pr_number()
 
         if not all([self.notion_token, self.linear_api_key, self.github_token]):
             print("❌ Missing required environment variables")
@@ -80,19 +81,21 @@ class ActionGuard:
             print(f"❌ Failed to get PR title: {e}")
             sys.exit(1)
 
+    def get_pr_number(self) -> str:
+        """Get PR number from GitHub Actions environment"""
+        pr_number = os.getenv('GITHUB_REF', '').split('/')[-2]
+        if not pr_number.isdigit():
+            print("❌ Could not determine PR number")
+            sys.exit(1)
+        return pr_number
+
     def should_skip_validation(self, pr_title: str) -> bool:
         """Check if PR should skip Linear validation (for infra/setup changes)"""
-        import re
-
         # Check for explicit [SKIP] tag
         if '[SKIP]' in pr_title.upper():
             return True
 
-        # Check for explicit [FORCE] tag (overrides skip)
-        if '[FORCE]' in pr_title.upper():
-            return False
-
-        # Check for infrastructure keywords (whole word match only)
+        # Check for infrastructure keywords
         skip_keywords = [
             'infra', 'ci', 'workflow', 'github action', 'permissions',
             'dependencies', 'setup', 'config', 'build', 'lint', 'docker',
@@ -100,8 +103,7 @@ class ActionGuard:
         ]
 
         title_lower = pr_title.lower()
-        # Use word boundaries to avoid substring matches like "ci" in "specification"
-        return any(re.search(r'\b' + re.escape(keyword) + r'\b', title_lower) for keyword in skip_keywords)
+        return any(keyword in title_lower for keyword in skip_keywords)
 
     def extract_linear_issue_id(self, pr_title: str) -> Optional[str]:
         """Extract Linear issue ID from PR title (e.g., [FOS-101])"""
@@ -274,10 +276,6 @@ class ActionGuard:
     def run(self):
         """Main execution flow"""
         print("🔍 Starting Action Guard validation...")
-
-        # Get PR title if not set in environment
-        if not self.pr_title:
-            self.pr_title = self.get_pr_title()
 
         # Check if this PR should skip Linear validation
         if self.should_skip_validation(self.pr_title):

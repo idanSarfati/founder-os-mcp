@@ -23,16 +23,27 @@ Add these secrets to your GitHub repository:
 Pull request titles must include the Linear issue ID in brackets:
 ```
 feat: implement user login [ENG-5]
-fix: button color [FOS-101]
+fix: button color validation [FOS-101]
 ```
 
-### Skip Validation for Infrastructure
-For infrastructure, CI/CD, and setup changes:
+### Skip Validation for Infrastructure Changes
+
+For infrastructure, CI/CD, and setup changes that don't need specification validation, use these patterns:
+
+**Automatic Skip Keywords:**
 ```
-infra: add workflow permissions
+infra: fix workflow permissions
 ci: update build config
 chore: update dependencies
-[SKIP] or [FORCE] tags available
+workflow: add github action
+permissions: grant api access
+setup: configure environment
+```
+
+**Explicit Skip Tag:**
+```
+fix: button color [SKIP]
+refactor: code cleanup [SKIP]
 ```
 
 ### Linear Issue Setup
@@ -57,27 +68,23 @@ See spec: https://www.notion.so/Feature-Login-Button-2d76a23768e68019b979e9e55ce
 ## 🎯 Example Usage
 
 ### ✅ Compliant PR
-- **Title**: `feat: add login validation [ENG-5]`
-- **Linked Issue**: ENG-5 with Notion spec requiring specific validation
-- **Changes**: Implementation matches spec
+- **Title**: `feat: update button color to purple [ENG-5]`
+- **Linked Issue**: ENG-5 with Notion spec requiring "purple" color
+- **Changes**: CSS updated to `color: purple`
 - **Result**: ✅ Build passes
 
 ### ❌ Non-Compliant PR
-- **Title**: `feat: update button color [ENG-5]`
+- **Title**: `feat: update button color to blue [ENG-5]`
 - **Linked Issue**: ENG-5 with Notion spec requiring "purple" color
-- **Changes**: Code sets color to "blue"
-- **Result**: 🚫 Build fails with violation details
-
-### ⚠️ Infrastructure PR (Skipped)
-- **Title**: `infra: add workflow permissions`
-- **Result**: ⚠️ Validation skipped, PR allowed
+- **Changes**: CSS updated to `color: blue`
+- **Result**: 🚫 Build fails with detailed violation comment
 
 ## 🛠️ Technical Details
 
 ### Dependencies
 - Python 3.9+
 - `requests` for API calls
-- `google-genai` for LLM validation
+- `google-generativeai` for LLM validation
 
 ### API Calls
 1. **GitHub API**: Get PR details (title, number)
@@ -106,21 +113,17 @@ Respond with ONLY "YES" if the changes violate the spec, or "NO" if they comply.
 If violations are found, briefly explain why.
 ```
 
-## 🔍 Skip Logic
+## 🔍 Debugging
 
-PRs are automatically skipped for infrastructure changes containing keywords:
-- `infra`, `ci`, `workflow`, `permissions`, `dependencies`, `setup`, `config`, `build`, `lint`, `docker`, `readme`, `documentation`, `chore`, `refactor`, `test`
-
-Use `[SKIP]` to force skip or `[FORCE]` to override skip detection.
+Check the action logs for detailed output:
+- ✅ Success messages for compliant changes
+- 🚫 Violation details for non-compliant changes
+- ❌ Error messages for API or parsing failures
 
 ## 🤝 Contributing
 
-This implementation includes:
-- ✅ Word boundary matching for skip keywords (avoids false positives)
-- ✅ Graceful fallback when API keys are missing
-- ✅ Comprehensive error handling and logging
-- ✅ Support for both old and new Google AI packages
-
-## 📋 License
-
-Internal Use Only - Founder OS Proprietary.
+This is a Proof of Concept implementation. Future enhancements:
+- Support for multiple LLM providers
+- Enhanced Notion content parsing
+- Configurable validation rules
+- Integration with other requirement management tools
