@@ -310,8 +310,9 @@ class ActionGuard:
             print("⚠️  Skipping LLM validation (no API key configured)")
             return True
 
-        # Use the available model from the debug output
-        model_name = "gemini-2.0-flash"
+        # שימוש ב-Alias שראינו בלוגים שקיים בוודאות
+        # מודל זה הוא יציב וחסכוני יותר במכסות מגרסה 2.0
+        model_name = "gemini-flash-latest"
 
         prompt = f"""
         You are a Senior Tech Lead validating a PR.
@@ -379,7 +380,7 @@ class ActionGuard:
 
                 # אם זה Rate Limit (429), נחכה וננסה שוב
                 if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
-                    wait_time = 20
+                    wait_time = 60  # נחכה דקה שלמה, זה CI, יש לו סבלנות
                     print(f"⏳ Hit rate limit. Waiting {wait_time} seconds...")
                     time.sleep(wait_time)
                 else:
