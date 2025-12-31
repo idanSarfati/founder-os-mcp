@@ -194,7 +194,6 @@ class ActionGuard:
 
             # Debug: Let's see what the pattern finds
             print("🔧 Debug: Checking all notion.so occurrences...")
-            import re
             all_matches = re.findall(r'notion\.so/[^?\s]+', issue_description)
             if all_matches:
                 print(f"🔧 Found URLs: {all_matches}")
