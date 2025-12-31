@@ -175,32 +175,44 @@ class ActionGuard:
             print(f"❌ Failed to query Linear API: {e}")
             return None
 
-    def extract_notion_page_id(self, issue_description: str) -> Optional[str]:
-        """Extract Notion page ID from issue description"""
-        print(f"🔍 Searching for Notion link in description: '{issue_description}'")
+    def extract_notion_page_id(self, description):
+        """
+        Extracts Notion page ID from text.
+        Supports formats:
+        - https://notion.so/page-name-32charID
+        - https://notion.so/32charID
+        """
+        if not description:
+            return None
 
-        # Look for Notion URLs in the description (handles both plain URLs and Markdown links)
-        notion_pattern = r'notion\.so/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})'
-        match = re.search(notion_pattern, issue_description)
+        print(f"🔍 Searching for Notion link in description: '{description}'")
+
+        # Search for sequence of 32 hex characters (a-f, 0-9)
+        # that comes after notion.so/ and optionally after text and dash
+        # Example: notion.so/some-title-1234567890abcdef1234567890abcdef
+
+        # Search all occurrences of notion.so and find the ID at the end of the path
+        # This regex captures the last 32 characters before question mark (query params) or end of line
+        match = re.search(r"notion\.so/(?:[^/]+/)*?([a-zA-Z0-9-]*?)([a-fA-F0-9]{32})(?:\?|$|\s|/)", description)
 
         if match:
-            page_id = match.group(1)
+            # group(2) is the ID itself (32 characters)
+            page_id = match.group(2)
             print(f"✅ Found Notion page ID: {page_id}")
             return page_id
+
+        print("❌ No Notion page ID found in description")
+        print("💡 Expected format: https://www.notion.so/page-name-PAGE_ID")
+
+        # Debug: Let's see what the pattern finds
+        print("🔧 Debug: Checking all notion.so occurrences...")
+        all_matches = re.findall(r'notion\.so/[^?\s]+', description)
+        if all_matches:
+            print(f"🔧 Found URLs: {all_matches}")
         else:
-            print("❌ No Notion page ID found in description")
-            print("💡 Expected format: https://www.notion.so/page-name-PAGE_ID")
-            print("💡 Or Markdown format: [text](https://www.notion.so/page-name-PAGE_ID)")
+            print("🔧 No notion.so URLs found at all")
 
-            # Debug: Let's see what the pattern finds
-            print("🔧 Debug: Checking all notion.so occurrences...")
-            all_matches = re.findall(r'notion\.so/[^?\s]+', issue_description)
-            if all_matches:
-                print(f"🔧 Found URLs: {all_matches}")
-            else:
-                print("🔧 No notion.so URLs found at all")
-
-            return None
+        return None
 
     def fetch_notion_page(self, page_id: str) -> Optional[str]:
         """Fetch Notion page content"""
