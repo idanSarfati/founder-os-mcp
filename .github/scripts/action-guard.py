@@ -179,7 +179,7 @@ class ActionGuard:
         """Extract Notion page ID from issue description"""
         print(f"🔍 Searching for Notion link in description: '{issue_description}'")
 
-        # Look for Notion URLs in the description
+        # Look for Notion URLs in the description (handles both plain URLs and Markdown links)
         notion_pattern = r'notion\.so/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})'
         match = re.search(notion_pattern, issue_description)
 
@@ -189,6 +189,18 @@ class ActionGuard:
             return page_id
         else:
             print("❌ No Notion page ID found in description")
+            print("💡 Expected format: https://www.notion.so/page-name-PAGE_ID")
+            print("💡 Or Markdown format: [text](https://www.notion.so/page-name-PAGE_ID)")
+
+            # Debug: Let's see what the pattern finds
+            print("🔧 Debug: Checking all notion.so occurrences...")
+            import re
+            all_matches = re.findall(r'notion\.so/[^?\s]+', issue_description)
+            if all_matches:
+                print(f"🔧 Found URLs: {all_matches}")
+            else:
+                print("🔧 No notion.so URLs found at all")
+
             return None
 
     def fetch_notion_page(self, page_id: str) -> Optional[str]:
