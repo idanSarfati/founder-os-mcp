@@ -248,46 +248,48 @@ class ActionGuard:
             print(f"❌ Failed to fetch Notion page: {e}")
             return None
 
-    def get_git_diff(self) -> str:
-        """Get git diff for the PR"""
+    def get_git_diff(self):
+        """
+        Retrieves the git diff between the current branch and the main branch.
+        Uses a robust fetching strategy to ensure origin/main is available.
+        """
+        print("🔍 Getting git diff...")
         try:
-            # Get the base branch from GitHub Actions environment
-            base_ref = os.getenv('GITHUB_BASE_REF', 'main')
-            head_ref = os.getenv('GITHUB_HEAD_REF', '')
+            # 1. מוודאים ש-main מעודכן אצלנו מקומית
+            # זה מונע מצב שבו ה-Action לא מכיר את ה-branch המקורי
+            print("🔄 Fetching origin/main...")
+            subprocess.run(
+                ["git", "fetch", "origin", "main"],
+                check=False,  # לא מכשילים אם יש בעיה רשתית קלה, ננסה בכל זאת
+                capture_output=True
+            )
 
-            # For PRs, compare against the base branch
-            if base_ref and head_ref:
-                # This is a PR - compare current branch against base
-                result = subprocess.run(
-                    ['git', 'diff', '--no-pager', f'origin/{base_ref}...HEAD'],
-                    capture_output=True,
-                    text=True,
-                    cwd=os.getcwd()
-                )
-            else:
-                # Fallback: try to get diff from last commit
-                result = subprocess.run(
-                    ['git', 'diff', '--no-pager', 'HEAD~1'],
-                    capture_output=True,
-                    text=True,
-                    cwd=os.getcwd()
-                )
+            # 2. הרצת ה-Diff בצורה הישירה והפשוטה ביותר
+            # משווים את התיקייה הנוכחית (ה-PR) מול origin/main
+            # ללא שלוש נקודות (...) שגורמות לבעיות merge-base
+            cmd = ["git", "diff", "origin/main"]
 
-            if result.returncode == 0:
-                diff_content = result.stdout.strip()
-                if diff_content:
-                    print(f"📄 Got git diff ({len(diff_content)} chars)")
-                    return diff_content
-                else:
-                    print("⚠️  Git diff is empty")
-                    return ""
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+
+            diff_content = result.stdout.strip()
+            if diff_content:
+                print(f"📄 Got git diff ({len(diff_content)} chars)")
+                return diff_content
             else:
-                print(f"❌ Failed to get git diff (exit code: {result.returncode})")
-                print(f"Error output: {result.stderr}")
+                print("⚠️  Git diff is empty")
                 return ""
 
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Failed to get git diff: {e}")
+            print(f"Error output: {e.stderr}")
+            return ""
         except Exception as e:
-            print(f"❌ Error getting git diff: {e}")
+            print(f"❌ Unexpected error getting git diff: {e}")
             return ""
 
     def validate_with_llm(self, spec_content: str, git_diff: str) -> bool:
