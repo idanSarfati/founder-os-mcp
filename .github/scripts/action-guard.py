@@ -124,13 +124,15 @@ class ActionGuard:
                     id
                     title
                     description
-                    team {
+                    state {
                         name
                     }
                     labels {
-                        name
+                        nodes {
+                            name
+                        }
                     }
-                    project {
+                    assignee {
                         name
                     }
                 }
