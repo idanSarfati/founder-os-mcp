@@ -143,14 +143,29 @@ class ActionGuard:
                 'Content-Type': 'application/json'
             }
 
+            # Debug: Print request details
+            print(f"🔍 Making Linear API request for issue: {issue_id}")
+            print(f"📡 Headers: Content-Type={headers.get('Content-Type')}, Auth starts with: {headers.get('Authorization', '')[:10]}...")
+
             response = requests.post(url, json={'query': query, 'variables': {'issueId': issue_id}}, headers=headers)
-            response.raise_for_status()
+
+            # Debug: Print full response details
+            print(f"📡 Response Status: {response.status_code}")
+            print(f"📡 Response Headers: {dict(response.headers)}")
+
+            if response.status_code != 200:
+                print(f"❌ Full Response Body: {response.text}")
+                print("❌ Linear API request failed - check authentication and request format")
+                return None
 
             data = response.json()
             if data.get('data', {}).get('issue'):
-                return data['data']['issue']
+                issue = data['data']['issue']
+                print(f"✅ Found Linear issue: {issue.get('title', 'Unknown')}")
+                return issue
             else:
-                print(f"❌ Linear issue {issue_id} not found")
+                print(f"❌ Linear issue {issue_id} not found in response")
+                print(f"Response data: {data}")
                 return None
 
         except Exception as e:
