@@ -310,20 +310,8 @@ class ActionGuard:
             print("⚠️  Skipping LLM validation (no API key configured)")
             return True
 
-        import google.generativeai as genai
-
-        # --- תוספת דיבאג: הדפסת מודלים זמינים ---
-        print("📋 Debug: Listing available models...")
-        try:
-            for m in genai.list_models():
-                if 'generateContent' in m.supported_generation_methods:
-                    print(f"   - {m.name}")
-        except Exception as e:
-            print(f"⚠️ Could not list models: {e}")
-        # ------------------------------------------
-
-        # נסה בינתיים את הגרסה הממוספרת הספציפית (לרוב זה הפתרון)
-        model_name = "gemini-1.5-flash-001"
+        # Use the available model from the debug output
+        model_name = "gemini-2.0-flash"
 
         prompt = f"""
         You are a Senior Tech Lead validating a PR.
