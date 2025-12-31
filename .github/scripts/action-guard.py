@@ -251,18 +251,39 @@ class ActionGuard:
     def get_git_diff(self) -> str:
         """Get git diff for the PR"""
         try:
-            # Get the diff between the target branch and the PR branch
-            result = subprocess.run(
-                ['git', 'diff', '--no-pager', 'HEAD~1'],
-                capture_output=True,
-                text=True,
-                cwd=os.getcwd()
-            )
+            # Get the base branch from GitHub Actions environment
+            base_ref = os.getenv('GITHUB_BASE_REF', 'main')
+            head_ref = os.getenv('GITHUB_HEAD_REF', '')
+
+            # For PRs, compare against the base branch
+            if base_ref and head_ref:
+                # This is a PR - compare current branch against base
+                result = subprocess.run(
+                    ['git', 'diff', '--no-pager', f'origin/{base_ref}...HEAD'],
+                    capture_output=True,
+                    text=True,
+                    cwd=os.getcwd()
+                )
+            else:
+                # Fallback: try to get diff from last commit
+                result = subprocess.run(
+                    ['git', 'diff', '--no-pager', 'HEAD~1'],
+                    capture_output=True,
+                    text=True,
+                    cwd=os.getcwd()
+                )
 
             if result.returncode == 0:
-                return result.stdout
+                diff_content = result.stdout.strip()
+                if diff_content:
+                    print(f"📄 Got git diff ({len(diff_content)} chars)")
+                    return diff_content
+                else:
+                    print("⚠️  Git diff is empty")
+                    return ""
             else:
-                print("❌ Failed to get git diff")
+                print(f"❌ Failed to get git diff (exit code: {result.returncode})")
+                print(f"Error output: {result.stderr}")
                 return ""
 
         except Exception as e:
