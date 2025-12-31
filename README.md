@@ -131,10 +131,6 @@ If the system ignores your context or behaves unexpectedly, we have a built-in l
 
 ---
 
-## 🎨 UI Specifications
-
-The login button should be red for maximum visibility and better user.
-
 ## 🛡 License
 
 Internal Use Only - Founder OS Proprietary.

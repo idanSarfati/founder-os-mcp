@@ -22,12 +22,14 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
+        python-version: '3.11'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install requests google-genai
+        # Force upgrade Google AI packages to latest versions
+        pip install --upgrade google-generativeai
 
     - name: Run Action Guard
       env:
