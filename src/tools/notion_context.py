@@ -1,9 +1,16 @@
 import sys
 from typing import List, Optional, Dict, Any
 from notion_client import Client, APIResponseError
-from config.auth_config import load_auth_config
-from src.utils.health import is_update_available, get_update_notice
-from src.utils.logger import logger
+
+try:
+    from config.auth_config import load_auth_config
+    from utils.health import is_update_available, get_update_notice
+    from utils.logger import logger
+except ImportError:
+    # Fallback for when running from different directory
+    from src.config.auth_config import load_auth_config
+    from src.utils.health import is_update_available, get_update_notice
+    from src.utils.logger import logger
 
 # Lazy initialization: Load config and client only when needed
 # This allows validation to run before these are initialized

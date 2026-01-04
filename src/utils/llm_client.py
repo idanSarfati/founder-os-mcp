@@ -10,7 +10,11 @@ import json
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv, find_dotenv
 from openai import OpenAI
-from src.utils.logger import logger
+
+try:
+    from utils.logger import logger
+except ImportError:
+    from src.utils.logger import logger
 
 # Load .env file before accessing environment variables
 env_path = find_dotenv()

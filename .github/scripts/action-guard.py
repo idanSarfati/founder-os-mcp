@@ -37,11 +37,18 @@ class ActionGuard:
         self.notion_token = os.getenv('NOTION_TOKEN', '')
         self.linear_api_key = os.getenv('LINEAR_API_KEY', '')
 
-        if not all([self.notion_token, self.linear_api_key, self.github_token]):
+        # Allow testing without API keys for local development
+        test_mode = os.getenv('TEST_MODE', '').lower() == 'true'
+
+        if not test_mode and not all([self.notion_token, self.linear_api_key, self.github_token]):
             print("ERROR: Missing required environment variables")
             print("Required: NOTION_TOKEN, LINEAR_API_KEY, GITHUB_TOKEN")
             print("Optional: GEMINI_API_KEY (for AI validation)")
+            print("For testing, set TEST_MODE=true to skip API requirements")
             sys.exit(1)
+
+        if test_mode:
+            print("TEST MODE: Running without API requirements")
 
         # Configure Gemini
         api_key = os.getenv('GEMINI_API_KEY', '')
@@ -264,7 +271,7 @@ class ActionGuard:
             # אופציה 1: השיטה הקלאסית ל-GitHub Actions (השוואה מול ה-Base של המיזוג)
             # HEAD^1 = המצב של main לפני המיזוג
             # HEAD = המצב אחרי המיזוג (כולל השינויים שלך)
-            print("⚖️ Attempting diff against merge parent (HEAD^1)...")
+            print("Attempting diff against merge parent (HEAD^1)...")
 
             # אנחנו מוסיפים --no-color כדי להקל על העיבוד
             cmd = ["git", "diff", "HEAD^1", "HEAD"]
@@ -517,6 +524,9 @@ class ActionGuard:
             project_root = os.path.join(script_dir, '..', '..')
             src_path = os.path.join(project_root, 'src')
 
+            # Add both project root and src directory to path
+            if project_root not in sys.path:
+                sys.path.insert(0, project_root)
             if src_path not in sys.path:
                 sys.path.insert(0, src_path)
 
@@ -585,7 +595,7 @@ class ActionGuard:
 
         # Check security level
         security_level = governance_rules.get('STRICTNESS_LEVEL', 'MEDIUM')
-        print(f"🛡️ Security level: {security_level}")
+        print(f"Security level: {security_level}")
 
         if violations:
             print("ERROR: Governance violations found:")

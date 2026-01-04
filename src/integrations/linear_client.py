@@ -52,11 +52,17 @@ class LinearClient:
             else:
                 load_dotenv()
 
+        # Allow test mode without API keys
+        test_mode = os.getenv('TEST_MODE', '').lower() == 'true'
         self.api_key = os.getenv("LINEAR_API_KEY")
         self.endpoint = "https://api.linear.app/graphql"
 
-        if not self.api_key:
+        if not test_mode and not self.api_key:
             raise ValueError("LINEAR_API_KEY missing in environment.")
+
+        # In test mode, use dummy value
+        if test_mode and not self.api_key:
+            self.api_key = "test_linear_key"
 
     def _execute_query(self, query: str, variables: Optional[Dict] = None) -> Dict[str, Any]:
         """

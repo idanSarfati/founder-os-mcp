@@ -8,17 +8,31 @@ to generate dynamic governance rules.
 import os
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from src.tools.notion_context import search_notion, fetch_project_context
-from src.utils.llm_client import get_llm_client
-from src.utils.logger import logger
-
-# Try to import Linear client (graceful degradation if not available)
 try:
-    from src.integrations.linear_client import LinearClient
-    LINEAR_AVAILABLE = True
-except (ImportError, ValueError):
-    LINEAR_AVAILABLE = False
-    logger.info("Linear integration not available for governance extraction")
+    from tools.notion_context import search_notion, fetch_project_context
+    from utils.llm_client import get_llm_client
+    from utils.logger import logger
+
+    # Try to import Linear client (graceful degradation if not available)
+    try:
+        from integrations.linear_client import LinearClient
+        LINEAR_AVAILABLE = True
+    except (ImportError, ValueError):
+        LINEAR_AVAILABLE = False
+        logger.info("Linear integration not available for governance extraction")
+except ImportError:
+    # Fallback for when running from different directory
+    from src.tools.notion_context import search_notion, fetch_project_context
+    from src.utils.llm_client import get_llm_client
+    from src.utils.logger import logger
+
+    # Try to import Linear client (graceful degradation if not available)
+    try:
+        from src.integrations.linear_client import LinearClient
+        LINEAR_AVAILABLE = True
+    except (ImportError, ValueError):
+        LINEAR_AVAILABLE = False
+        logger.info("Linear integration not available for governance extraction")
 
 
 class GovernanceExtractor:
