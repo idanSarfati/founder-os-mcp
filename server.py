@@ -5,7 +5,7 @@ from config.auth_config import load_auth_config
 # Import modular tools
 from src.tools.notion_context import search_notion, fetch_project_context, append_to_page
 from src.tools.fs import list_directory
-from src.tools.project_ops import bootstrap_project
+from src.tools.project_ops import bootstrap_project, refresh_governance_rules
 # Import health check utilities
 # Import module directly to avoid Python import reference issues with global variables
 from src.utils import health
@@ -146,9 +146,10 @@ if linear_client:
                 error_msg = get_update_notice() + error_msg
             return error_msg
 
-# 6. Register Bootstrap Tool
+# 6. Register Bootstrap Tools
 mcp.add_tool(bootstrap_project)
-logger.info("Bootstrap tool registered: bootstrap_project")
+mcp.add_tool(refresh_governance_rules)
+logger.info("Bootstrap tools registered: bootstrap_project, refresh_governance_rules")
 
 # 7. Check for Updates on Startup and Set Global State
 # IMPORTANT: This must run BEFORE mcp.run() to set the global flag

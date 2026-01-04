@@ -1,7 +1,15 @@
-# Founder OS - Dynamic Governance Engine
+"""
+Governance Template for Founder OS Hybrid Enforcement.
+
+This module defines the structure for dynamic governance rules that are injected
+into the .cursor/rules/founder-os-governance.mdc file based on data extracted
+from Notion and Linear sources.
+"""
+
+GOVERNANCE_TEMPLATE = """# Founder OS - Dynamic Governance Engine
 # ⚠️  CRITICAL: This file is AUTO-GENERATED. Do NOT edit manually.
 # ⚠️  Source of Truth: Notion Specs + Linear Tasks
-# ⚠️  Last Updated: 2026-01-04T19:32:46.498115
+# ⚠️  Last Updated: {GENERATION_TIMESTAMP}
 
 ---
 
@@ -12,27 +20,25 @@
 
 ## 🛠️ ALLOWED TECH STACK
 # YOU MUST ONLY use technologies from this approved list:
-Vue.js 3, Nuxt 3, Python 3.10+, FastAPI, PostgreSQL, Supabase
+{ALLOWED_TECH_STACK}
 
 # ❌ FORBIDDEN LIBRARIES
 # YOU MUST NEVER use or suggest these libraries:
-React, jQuery, Bootstrap, Axios, Lodash, Moment.js
+{FORBIDDEN_LIBRARIES}
 
 # 🔐 AUTH PROVIDER
 # YOU MUST implement authentication using:
-Supabase Auth
+{AUTH_PROVIDER}
 
 # 🛡️ SECURITY LEVEL
 # YOU MUST enforce this security posture:
-MAXIMUM
+{SECURITY_LEVEL}
 
 ---
 
 ## 📋 ACTIVE TASKS CONTEXT
 # Current active tasks from Linear that may influence technical decisions:
-- [ENG-10] Implement Dynamic Governance Engine (Semantic Adapter) (Engineering)
-- [ENG-6] Gaining 5 Alpha Users (Engineering)
-- [ENG-2] Set up your teams (Engineering)
+{ACTIVE_TASKS_CONTEXT}
 
 ---
 
@@ -80,3 +86,13 @@ MAXIMUM
 
 **REMEMBER**: You are the guardian of architectural integrity.
 Stay vigilant. Ask questions. Never assume.
+"""
+
+def get_governance_template() -> str:
+    """
+    Returns the governance template string with placeholders.
+
+    Returns:
+        The template string ready for f-string formatting
+    """
+    return GOVERNANCE_TEMPLATE

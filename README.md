@@ -48,6 +48,45 @@ You should see `founder-os` with a **Green Light** 🟢.
 
 ---
 
+## 🛡️ **Dual Protection System**
+
+Founder OS implements **billion-dollar resilience** through dual-layer protection:
+
+### **Phase A: Local Intelligence (Cursor Rules)**
+- AI reads `.cursor/rules/founder-os-governance.mdc` before every interaction
+- **Suggests** compliance but can be bypassed by determined developers
+- **Speed bump** that catches accidental violations
+
+### **Phase B: CI/CD Enforcement (GitHub Actions)**
+- Automatically **blocks PRs** that violate governance rules
+- **Scans code changes** for forbidden libraries, patterns, and architectural violations
+- **Cannot be bypassed** - creates the "Iron Wall" of compliance
+
+**Why This Works:**
+- ❌ Developer deletes `.cursor/rules`? CI/CD catches it
+- ❌ AI "forgets" the rules? CI/CD catches it
+- ❌ Human bypasses AI? CI/CD catches it
+- ✅ **Zero violations reach production**
+
+### **GitHub Action Configuration**
+
+The CI/CD enforcement runs automatically on PRs and supports three modes:
+
+```yaml
+# Set in GitHub repository variables
+VALIDATION_MODE: dual  # Run both Phase A + Phase B (default)
+# VALIDATION_MODE: spec_only    # Only PR-specific spec validation
+# VALIDATION_MODE: governance_only  # Only global governance rules
+```
+
+**Required Secrets:**
+- `NOTION_TOKEN` - For accessing governance specifications
+- `LINEAR_API_KEY` - For task context and priorities
+- `GEMINI_API_KEY` - For AI-powered validation
+- `GITHUB_TOKEN` - Auto-provided by GitHub Actions
+
+---
+
 ## 🔄 Updates & Maintenance
 
 The system includes a **"Heartbeat"** mechanism. If a new version is released, the AI will notify you directly in the chat with a `🚨 UPDATE AVAILABLE` alert.
@@ -94,6 +133,29 @@ The agent will execute the `bootstrap_project` tool, injecting a local `.cursorr
 | `list_linear_tasks` | Lists active issues (assigned + team). |
 | `get_linear_task_details` | Fetches rich details for a specific Linear task (e.g., `IDA-6`). |
 | `bootstrap_project` | Deploys the project "Brain" (`.cursorrules`). |
+| `refresh_governance_rules` | Updates governance rules from latest Notion/Linear data. |
+
+## 🛡️ Governance Enforcement
+
+The system automatically enforces these constraints from your Notion specifications:
+
+### **Blocked at CI/CD Level:**
+- **Forbidden Libraries**: React, jQuery, Bootstrap, Axios, Lodash, Moment.js
+- **Database Restrictions**: SQLite, MongoDB (Redis allowed for cache only)
+- **Security Violations**: Missing validation, XSS protection, CSRF tokens
+- **Architecture Violations**: Non-compliant patterns, missing dependency injection
+
+### **Validation Flow:**
+1. **PR opened** → GitHub Action triggers
+2. **Extract governance rules** from Notion + Linear
+3. **Scan code changes** for violations
+4. **AI analysis** of architectural compliance
+5. **Block PR** or **allow merge** based on results
+
+### **Bypass Options:**
+- `[SKIP]` in PR title - Skip all validation (infrastructure changes)
+- `[FORCE]` in PR title - Override skip logic
+- Infrastructure keywords: `infra`, `ci`, `workflow`, `dependencies`, `setup`
 
 ---
 

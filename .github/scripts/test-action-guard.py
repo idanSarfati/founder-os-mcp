@@ -47,8 +47,68 @@ def test_mock_validation():
     print("Diff preview:", diff[:100] + "...")
     print("Mock validation test completed")
 
+def test_governance_enforcement():
+    """Test governance enforcement logic"""
+    print("\nTesting governance enforcement...")
+
+    # Mock governance rules
+    governance_rules = {
+        "ALLOWED_TECH_STACK": "Vue.js 3, Python 3.10+, FastAPI",
+        "FORBIDDEN_LIBRARIES": "React, jQuery, Bootstrap, Axios",
+        "AUTH_PROVIDER": "Supabase Auth",
+        "STRICTNESS_LEVEL": "MAXIMUM"
+    }
+
+    # Test diff with forbidden libraries
+    test_diff = """
+    diff --git a/package.json b/package.json
+    index 123456..789012 100644
+    --- a/package.json
+    +++ b/package.json
+    @@ -1,5 +1,6 @@
+     {
+       "dependencies": {
+    +    "jquery": "^3.6.0",
+         "vue": "^3.0.0"
+       }
+     }
+    """
+
+    print("Testing forbidden library detection...")
+    violations = []
+
+    forbidden_libs = governance_rules.get('FORBIDDEN_LIBRARIES', '')
+    if forbidden_libs:
+        forbidden_list = [lib.strip().lower() for lib in forbidden_libs.split(',') if lib.strip()]
+
+        for lib in forbidden_list:
+            # Check for actual package references in package.json or import statements
+            if lib in test_diff.lower():
+                # More precise patterns for dependency detection
+                dep_patterns = [
+                    f'"{lib}":',  # "jquery": "version"
+                    f"'{lib}':",  # 'jquery': 'version'
+                    f'{lib}@',    # jquery@version
+                    f'{lib}:'     # jquery: version
+                ]
+
+                for pattern in dep_patterns:
+                    if pattern in test_diff.lower():
+                        violations.append(f"Forbidden library used: {lib}")
+                        break
+
+    if violations:
+        print("VIOLATIONS detected:")
+        for v in violations:
+            print(f"   {v}")
+    else:
+        print("No violations detected")
+
+    print("Governance enforcement test completed")
+
 if __name__ == "__main__":
     print("Running Action Guard tests...")
     test_pr_title_parsing()
     test_mock_validation()
-    print("\nAll basic tests completed!")
+    test_governance_enforcement()
+    print("\nAll tests completed!")

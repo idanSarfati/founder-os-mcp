@@ -50,9 +50,16 @@ def load_auth_config() -> AuthConfig:
             # Last resort: try current directory
             load_dotenv()
 
+    # Allow test mode without API keys
+    test_mode = os.getenv('TEST_MODE', '').lower() == 'true'
     notion_key = os.getenv("NOTION_API_KEY")
-    if not notion_key:
+
+    if not test_mode and not notion_key:
         raise ValueError("CRITICAL: NOTION_API_KEY is missing from .env")
+
+    # In test mode, use dummy values
+    if test_mode and not notion_key:
+        notion_key = "test_notion_key"
 
     return AuthConfig(
         notion_api_key=notion_key,  # <--- LOAD IT HERE

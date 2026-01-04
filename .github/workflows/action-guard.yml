@@ -30,6 +30,8 @@ jobs:
         pip install requests google-genai
         # Force upgrade Google AI packages to latest versions
         pip install --upgrade google-generativeai
+        # Install project dependencies for governance extraction
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
     - name: Run Action Guard
       env:
@@ -40,6 +42,7 @@ jobs:
         PR_TITLE: ${{ github.event.pull_request.title }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         GITHUB_REPOSITORY: ${{ github.repository }}
+        VALIDATION_MODE: ${{ vars.VALIDATION_MODE || 'dual' }}
       run: |
         python .github/scripts/action-guard.py
       continue-on-error: false
@@ -50,20 +53,42 @@ jobs:
       with:
         script: |
           const fs = require('fs');
-          let violationDetails = 'Unable to read validation details.';
+          let specViolations = 'Unable to read spec validation details.';
+          let governanceViolations = 'Unable to read governance validation details.';
+          let validationMode = process.env.VALIDATION_MODE || 'dual';
+
           try {
             if (fs.existsSync('validation_result.txt')) {
-              violationDetails = fs.readFileSync('validation_result.txt', 'utf8');
+              specViolations = fs.readFileSync('validation_result.txt', 'utf8');
+            }
+            if (fs.existsSync('governance_violations.txt')) {
+              governanceViolations = fs.readFileSync('governance_violations.txt', 'utf8');
             }
           } catch (error) {
-            console.log('Error reading validation result:', error);
+            console.log('Error reading validation results:', error);
           }
 
-          const body = '🚫 **Action Guard Failed**\n\n' +
-            'The code changes in this PR violate the Notion specification linked to the Linear issue.\n\n' +
-            '**Violation Details:**\n' +
-            violationDetails + '\n\n' +
-            'Please review the requirements in the linked Notion page and update your code accordingly.';
+          let body = '🚫 **Action Guard Failed**\n\n';
+
+          if (validationMode === 'dual' || validationMode === 'spec_only') {
+            body += '❌ **Phase A (Spec Validation):** Failed\n\n';
+            body += '**Spec Violations:**\n' + specViolations + '\n\n';
+          }
+
+          if (validationMode === 'dual' || validationMode === 'governance_only') {
+            body += '❌ **Phase B (Governance Enforcement):** Failed\n\n';
+            body += '**Governance Violations:**\n' + governanceViolations + '\n\n';
+          }
+
+          body += '**Next Steps:**\n';
+          if (validationMode === 'dual' || validationMode === 'spec_only') {
+            body += '• Review the requirements in the linked Notion page\n';
+          }
+          if (validationMode === 'dual' || validationMode === 'governance_only') {
+            body += '• Check the governance rules in your Notion workspace\n';
+            body += '• Remove forbidden libraries or use approved alternatives\n';
+          }
+          body += '• Update your code and push changes';
 
           github.rest.issues.createComment({
             issue_number: context.issue.number,
