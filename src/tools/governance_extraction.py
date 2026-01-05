@@ -86,17 +86,17 @@ class GovernanceExtractor:
             combined_context = f"NOTION CONTEXT:\n{notion_context}\n\nLINEAR CONTEXT:\n{linear_context}"
             logger.debug(f"Combined context: {len(combined_context)} chars")
 
-            # Step 4: Use LLM to normalize data (or mock if no API key)
+            # Step 4: Use LLM to normalize data (or fallback if no API key)
             llm_client = self._get_llm_client()
             if llm_client:
                 try:
                     governance_data = llm_client.extract_governance_data(combined_context)
                 except Exception as e:
-                    logger.warning(f"LLM extraction failed, using mock data: {e}")
-                    governance_data = self._extract_from_test_spec()
+                    logger.warning(f"LLM extraction failed, using fallback data: {e}")
+                    governance_data = self._get_fallback_data()
             else:
-                logger.info("LLM client not available, using mock extraction")
-                governance_data = self._extract_from_test_spec()
+                logger.info("LLM client not available, using fallback data")
+                governance_data = self._get_fallback_data()
 
             # Step 5: Add metadata and task context
             governance_data.update({
@@ -260,10 +260,10 @@ class GovernanceExtractor:
         logger.warning("Using fallback governance data")
 
         return {
-            "allowed_tech": ["Unknown/Detect from Codebase"],
-            "forbidden_libs": ["Unknown/Detect from Codebase"],
-            "auth_strategy": "Unknown/Detect from Codebase",
-            "strictness": "Unknown/Detect from Codebase",
+            "ALLOWED_TECH_STACK": "Unknown/Detect from Codebase",
+            "FORBIDDEN_LIBRARIES": "Unknown/Detect from Codebase",
+            "AUTH_PROVIDER": "Unknown/Detect from Codebase",
+            "STRICTNESS_LEVEL": "MEDIUM",
             "active_tasks_context": "- Unable to retrieve active tasks",
             "generation_timestamp": datetime.now().isoformat()
         }
