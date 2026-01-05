@@ -134,7 +134,7 @@ class ActionGuard:
             return None
 
         labels = pr_details.get('labels', [])
-        body = pr_details.get('body', '')
+        body = pr_details.get('body') or ''  # Defensive: treat None as empty string
 
         # Check for governance-override label
         if 'governance-override' in labels:
