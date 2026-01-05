@@ -108,7 +108,8 @@ class ActionGuard:
         skip_keywords = [
             'infra', 'ci', 'workflow', 'github action', 'permissions',
             'dependencies', 'setup', 'config', 'build', 'lint', 'docker',
-            'readme', 'documentation', 'chore', 'refactor', 'test'
+            'readme', 'documentation', 'chore', 'refactor', 'test', 'fix',
+            'feat', 'style', 'perf', 'revert'
         ]
 
         title_lower = pr_title.lower()
