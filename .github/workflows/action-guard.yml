@@ -24,14 +24,12 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install dependencies
+    - name: Install basic dependencies
       run: |
         python -m pip install --upgrade pip
         pip install requests google-genai
         # Force upgrade Google AI packages to latest versions
         pip install --upgrade google-generativeai
-        # Install project dependencies for governance extraction
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
     - name: Run Action Guard
       env:
@@ -45,7 +43,12 @@ jobs:
         VALIDATION_MODE: ${{ vars.VALIDATION_MODE || 'dual' }}
       run: |
         python .github/scripts/action-guard.py
-      continue-on-error: false
+
+    - name: Install project dependencies
+      if: success()
+      run: |
+        # Only install project dependencies after validation passes
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
     - name: Comment on PR
       if: failure()
