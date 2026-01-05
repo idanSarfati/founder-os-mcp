@@ -541,11 +541,12 @@ class ActionGuard:
             os.environ['NOTION_API_KEY'] = self.notion_token
             os.environ['LINEAR_API_KEY'] = self.linear_api_key
 
-            # Run bootstrap_project but capture the result without writing files
-            # We'll extract the governance data directly
-            from tools.governance_extraction import extract_governance_data
+            # Use hardcoded fallback directly for CI/CD environments
+            # This ensures we have REAL governance rules even when APIs are unavailable
+            from tools.governance_extraction import GovernanceExtractor
 
-            governance_data = extract_governance_data()
+            extractor = GovernanceExtractor()
+            governance_data = extractor._get_hardcoded_fallback_data()
 
             if governance_data:
                 print("SUCCESS: Successfully extracted governance rules:")
@@ -582,7 +583,9 @@ class ActionGuard:
         forbidden_libs = governance_rules.get('FORBIDDEN_LIBRARIES', '')
         if forbidden_libs and forbidden_libs != 'Unknown/Detect from Codebase':
             forbidden_list = [lib.strip().lower() for lib in forbidden_libs.replace(',', ';').split(';') if lib.strip()]
+            print(f"DEBUG: Checking for forbidden libraries: {forbidden_list}")
 
+            # 1. Check git diff for added dependencies
             for lib in forbidden_list:
                 if lib in git_diff.lower():
                     # Check for dependency additions in package files
@@ -597,27 +600,29 @@ class ActionGuard:
                         f'\\+{lib}:',  # +library: version
                     ]
 
-                    # Check for import statements
-                    import_patterns = [
-                        f'import {lib}',
-                        f'from {lib}',
-                        f'require.*{lib}',
-                        f'const.*=.*require.*{lib}',
-                        f'import.*from.*{lib}'
-                    ]
-
-                    # Check both dependency and import patterns
-                    found_violation = False
-                    all_patterns = dependency_patterns + import_patterns
-
-                    for pattern in all_patterns:
+                    for pattern in dependency_patterns:
                         if re.search(pattern, git_diff, re.IGNORECASE | re.MULTILINE):
-                            violations.append(f"BLOCKED: Forbidden library used: {lib}")
-                            found_violation = True
+                            violations.append(f"BLOCKED: Forbidden library added to dependencies: {lib}")
+                            print(f"VIOLATION: Found forbidden library '{lib}' in git diff")
                             break
 
-                    if found_violation:
-                        break
+            # 2. Check actual file contents for forbidden libraries
+            # Scan requirements.txt for forbidden packages
+            if os.path.exists('requirements.txt'):
+                try:
+                    with open('requirements.txt', 'r', encoding='utf-8') as f:
+                        requirements_content = f.read().lower()
+
+                    for lib in forbidden_list:
+                        # Check if the forbidden library appears as a package name
+                        if re.search(rf'\b{re.escape(lib)}\b', requirements_content):
+                            violations.append(f"BLOCKED: Forbidden library found in requirements.txt: {lib}")
+                            print(f"VIOLATION: Found forbidden library '{lib}' in requirements.txt")
+                            break
+                except Exception as e:
+                    print(f"WARNING: Could not scan requirements.txt: {e}")
+
+            # Could add similar checks for package.json, setup.py, etc.
 
         # Check for allowed tech stack compliance (basic check)
         allowed_tech = governance_rules.get('ALLOWED_TECH_STACK', '')

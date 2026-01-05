@@ -24,13 +24,18 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install basic dependencies
+    # שלב 1: התקנת הכלים של ה-Guard בלבד!
+    # אנחנו לא מתקינים את requirements.txt עדיין, כי הוא מכיל "רעל" (jquery)
+    - name: Install Guard dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests google-genai
+        pip install requests google-genai python-dotenv notion-client
         # Force upgrade Google AI packages to latest versions
         pip install --upgrade google-generativeai
 
+    # שלב 2: הרצת ה-Guard
+    # עכשיו ה-Guard ירוץ, יקרא את requirements.txt (כקובץ טקסט),
+    # יראה שיש שם jquery, ויחסום את ה-PR בצורה מסודרת.
     - name: Run Action Guard
       env:
         NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
@@ -44,7 +49,9 @@ jobs:
       run: |
         python .github/scripts/action-guard.py
 
-    - name: Install project dependencies
+    # שלב 3: התקנת שאר הפרויקט (אופציונלי)
+    # השלב הזה יקרה רק אם ה-Guard אישר (מה שלא יקרה עכשיו)
+    - name: Install Project Dependencies
       if: success()
       run: |
         # Only install project dependencies after validation passes
