@@ -1,1 +1,2 @@
-BLOCKED: Forbidden library used: jquery
+BLOCKED: Forbidden library found: jquery
+BLOCKED: Forbidden library found in requirements.txt: jquery

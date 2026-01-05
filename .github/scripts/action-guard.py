@@ -504,9 +504,9 @@ class ActionGuard:
             try:
                 with open("requirements.txt", "r") as f:
                     deps_content = f.read()
-                print(f"📦 Loaded requirements.txt ({len(deps_content)} chars)")
+                print(f"DEPS: Loaded requirements.txt ({len(deps_content)} chars)")
             except Exception as e:
-                print(f"⚠️ Could not read requirements.txt: {e}")
+                print(f"WARNING: Could not read requirements.txt: {e}")
 
         # בניית הקונטקסט המלא ל-AI
         # אנחנו אומרים לו: "הנה השינויים בקוד, אבל הנה גם רשימת התלויות המלאה!"
