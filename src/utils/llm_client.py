@@ -7,14 +7,31 @@ used in the dynamic governance system.
 
 import os
 import json
+import logging
 from typing import Dict, Any, Optional
-from dotenv import load_dotenv, find_dotenv
-from openai import OpenAI
+
+# ✅ Defensive Import: מונע קריסה אם python-dotenv חסר (כמו ב-CI)
+try:
+    from dotenv import load_dotenv, find_dotenv
+    DOTENV_AVAILABLE = True
+except ImportError:
+    DOTENV_AVAILABLE = False
+
+# ✅ Defensive Import: מונע קריסה אם openai חסר
+try:
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    OpenAI = None
 
 try:
     from utils.logger import logger
 except ImportError:
-    from src.utils.logger import logger
+    try:
+        from src.utils.logger import logger
+    except ImportError:
+        logger = logging.getLogger(__name__)
 
 # Load .env file before accessing environment variables
 env_path = find_dotenv()
@@ -32,6 +49,21 @@ class LLMClient:
 
     def __init__(self):
         """Initialize the LLM client with API key from environment."""
+        if not OPENAI_AVAILABLE:
+            logger.warning("⚠️ OpenAI client not available. Using fallback mode.")
+            self.client = None
+            self.model = None
+            return
+
+        # Load environment variables if dotenv is available
+        if DOTENV_AVAILABLE:
+            try:
+                env_path = find_dotenv()
+                if env_path:
+                    load_dotenv(env_path)
+            except Exception as e:
+                logger.debug(f"Could not load .env file: {e}")
+
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY environment variable required")
@@ -69,6 +101,11 @@ REQUIRED FIELDS:
 
 OUTPUT: Valid JSON only, no markdown or explanation.
 """
+
+        # Check if OpenAI client is available
+        if self.client is None:
+            logger.info("OpenAI client not available, using safe defaults")
+            return self._get_safe_defaults()
 
         try:
             logger.info("Calling LLM to extract governance data")

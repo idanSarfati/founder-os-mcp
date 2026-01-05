@@ -77,6 +77,7 @@ class GovernanceExtractor:
         try:
             import tools.notion_context  # Test if notion_context can be imported
             import integrations.linear_client  # Test if linear_client can be imported
+            import utils.llm_client  # Test if llm_client can be imported
         except ImportError as e:
             logger.warning(f"External dependencies not available: {e}")
             logger.info("Using hardcoded governance fallback (CI Mode)")
