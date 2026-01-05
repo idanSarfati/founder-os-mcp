@@ -524,9 +524,12 @@ class ActionGuard:
 
         if os.path.exists(rules_file):
             try:
-                print("Reading existing governance rules from .mdc file...")
+                print(f"Reading existing governance rules from .mdc file: {rules_file}")
                 with open(rules_file, 'r', encoding='utf-8') as f:
                     content = f.read()
+
+                print(f"DEBUG: .mdc file content length: {len(content)} chars")
+                print(f"DEBUG: .mdc file content preview: {content[:200]}...")
 
                 # Parse the .mdc file to extract governance rules
                 governance_data = self._parse_governance_mdc(content)
@@ -665,13 +668,16 @@ class ActionGuard:
             True if compliant, False if violations found
         """
         print("INFO: Validating governance compliance...")
+        print(f"DEBUG: Governance rules received: {governance_rules}")
 
         violations = []
 
         # Check for forbidden libraries
         forbidden_libs = governance_rules.get('FORBIDDEN_LIBRARIES', '')
+        print(f"DEBUG: Forbidden libs string: '{forbidden_libs}'")
         if forbidden_libs and forbidden_libs != 'Unknown/Detect from Codebase':
             forbidden_list = [lib.strip().lower() for lib in forbidden_libs.replace(',', ';').split(';') if lib.strip()]
+            print(f"DEBUG: Forbidden list: {forbidden_list}")
 
             for lib in forbidden_list:
                 if lib in git_diff.lower():
