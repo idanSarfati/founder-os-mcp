@@ -764,6 +764,43 @@ class ActionGuard:
                 "violation_type": "NONE"
             }
 
+    def _get_linear_team_id(self):
+        """Fetches the first available Team ID from Linear to create issues."""
+        if not self.linear_api_key:
+            return None
+
+        query = """
+        query {
+          teams(first: 1) {
+            nodes {
+              id
+              name
+            }
+          }
+        }
+        """
+        try:
+            response = requests.post(
+                "https://api.linear.app/graphql",
+                headers={
+                    "Authorization": self.linear_api_key,
+                    "Content-Type": "application/json"
+                },
+                json={"query": query},
+                timeout=10.0
+            )
+            data = response.json()
+            teams = data.get("data", {}).get("teams", {}).get("nodes", [])
+            if teams:
+                print(f"DEBUG: Found Linear Team: {teams[0]['name']} ({teams[0]['id']})")
+                return teams[0]['id']
+            else:
+                print("⚠️ No teams found in Linear.")
+                return None
+        except Exception as e:
+            print(f"⚠️ Failed to fetch Linear Team ID: {e}")
+            return None
+
     def log_incident_to_linear(self, reason: str, pr_url: str, incident_type: str = "override") -> bool:
         """
         Log governance incident to Linear by creating a new task.
@@ -776,6 +813,19 @@ class ActionGuard:
         Returns:
             True if successfully logged, False otherwise
         """
+        # Check if Linear API key is available
+        if not self.linear_api_key:
+            print("⚠️ Linear API key not configured. Skipping audit log.")
+            return False
+
+        # 1. Get Team ID first
+        team_id = self._get_linear_team_id()
+        if not team_id:
+            print("⚠️ Could not find a Linear Team ID. Cannot create audit ticket.")
+            return False
+
+        print(f"📝 Logging Governance Incident to Linear (Team ID: {team_id})...")
+
         try:
             # Determine the appropriate title and priority based on incident type
             if incident_type == "override":
@@ -816,55 +866,56 @@ Immediate review required. This PR contains critical violations that may comprom
 
             # Create the Linear task using GraphQL mutation
             mutation = """
-            mutation CreateGovernanceAudit($title: String!, $description: String!, $priority: Int!) {
-                issueCreate(
-                    input: {
-                        title: $title
-                        description: $description
-                        priority: $priority
-                        teamId: "engineering"  # You'll need to adjust this based on your Linear setup
-                        labelIds: ["governance-audit"]  # You'll need to adjust this based on your Linear setup
-                    }
-                ) {
-                    issue {
-                        id
-                        title
-                        url
-                    }
+            mutation IssueCreate($input: IssueCreateInput!) {
+              issueCreate(input: $input) {
+                success
+                issue {
+                  id
+                  title
+                  url
                 }
+              }
             }
             """
 
-            url = "https://api.linear.app/graphql"
-            headers = {
-                'Authorization': self.linear_api_key,
-                'Content-Type': 'application/json',
-                'x-apollo-operation-name': 'CreateGovernanceAudit'
-            }
-
             variables = {
-                'title': title,
-                'description': description,
-                'priority': priority
+                "input": {
+                    "teamId": team_id,  # REQUIRED: Must include team ID!
+                    "title": title,
+                    "description": description,
+                    "priority": priority,
+                    "labelIds": []  # Empty for now - can add governance-audit label if needed
+                }
             }
 
-            response = requests.post(url, json={'query': mutation, 'variables': variables}, headers=headers)
+            response = requests.post(
+                "https://api.linear.app/graphql",
+                headers={
+                    "Authorization": self.linear_api_key,
+                    "Content-Type": "application/json"
+                },
+                json={"query": mutation, "variables": variables},
+                timeout=10.0
+            )
 
             if response.status_code == 200:
                 data = response.json()
-                if data.get('data', {}).get('issueCreate', {}).get('issue'):
-                    issue = data['data']['issueCreate']['issue']
-                    print(f"SUCCESS: Created Linear audit task: {issue.get('url', issue.get('id', 'Unknown'))}")
+                if data.get("errors"):
+                    print(f"⚠️ Linear API Error: {data['errors'][0]['message']}")
+                    return False
+                elif data.get("data", {}).get("issueCreate", {}).get("success"):
+                    issue = data["data"]["issueCreate"]["issue"]
+                    print(f"✅ Audit Ticket Created: {issue['title']} ({issue['url']})")
                     return True
                 else:
-                    print(f"ERROR: Linear API returned success but no issue created: {data}")
+                    print("⚠️ Failed to create ticket (Unknown error).")
+                    return False
             else:
                 print(f"ERROR: Failed to create Linear task. Status: {response.status_code}, Response: {response.text}")
-
-            return False
+                return False
 
         except Exception as e:
-            print(f"ERROR: Failed to log incident to Linear: {e}")
+            print(f"⚠️ Failed to log incident to Linear (continuing without audit): {e}")
             return False
 
     def post_pr_comment(self, comment_body: str, pr_details: Dict[str, Any]) -> bool:
