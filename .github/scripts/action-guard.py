@@ -776,6 +776,11 @@ class ActionGuard:
         Returns:
             True if successfully logged, False otherwise
         """
+        # Check if Linear API key is available
+        if not self.linear_api_key:
+            print("⚠️ Linear API key not configured. Skipping audit log.")
+            return False
+
         try:
             # Determine the appropriate title and priority based on incident type
             if incident_type == "override":
@@ -851,20 +856,24 @@ Immediate review required. This PR contains critical violations that may comprom
             response = requests.post(url, json={'query': mutation, 'variables': variables}, headers=headers)
 
             if response.status_code == 200:
-                data = response.json()
-                if data.get('data', {}).get('issueCreate', {}).get('issue'):
-                    issue = data['data']['issueCreate']['issue']
-                    print(f"SUCCESS: Created Linear audit task: {issue.get('url', issue.get('id', 'Unknown'))}")
-                    return True
-                else:
-                    print(f"ERROR: Linear API returned success but no issue created: {data}")
+                try:
+                    data = response.json()
+                    if data and data.get('data', {}).get('issueCreate', {}).get('issue'):
+                        issue = data['data']['issueCreate']['issue']
+                        print(f"SUCCESS: Created Linear audit task: {issue.get('url', issue.get('id', 'Unknown'))}")
+                        return True
+                    else:
+                        print(f"ERROR: Linear API returned success but no issue created: {data}")
+                except (ValueError, AttributeError) as e:
+                    print(f"ERROR: Failed to parse Linear API response: {e}")
+                    print(f"Raw response: {response.text[:500]}...")
             else:
                 print(f"ERROR: Failed to create Linear task. Status: {response.status_code}, Response: {response.text}")
 
             return False
 
         except Exception as e:
-            print(f"ERROR: Failed to log incident to Linear: {e}")
+            print(f"⚠️ Failed to log incident to Linear (continuing without audit): {e}")
             return False
 
     def post_pr_comment(self, comment_body: str, pr_details: Dict[str, Any]) -> bool:
