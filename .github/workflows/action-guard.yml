@@ -45,7 +45,11 @@ jobs:
         PR_TITLE: ${{ github.event.pull_request.title }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         GITHUB_REPOSITORY: ${{ github.repository }}
-        VALIDATION_MODE: ${{ vars.VALIDATION_MODE || 'dual' }}
+        VALIDATION_MODE: ${{ vars.VALIDATION_MODE }}
+      run: |
+        # Set default validation mode if not specified
+        export VALIDATION_MODE="${VALIDATION_MODE:-dual}"
+        python .github/scripts/action-guard.py
       run: |
         python .github/scripts/action-guard.py
 
