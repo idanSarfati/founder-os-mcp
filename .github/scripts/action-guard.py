@@ -764,6 +764,43 @@ class ActionGuard:
                 "violation_type": "NONE"
             }
 
+    def _get_linear_team_id(self):
+        """Fetches the first available Team ID from Linear to create issues."""
+        if not self.linear_api_key:
+            return None
+
+        query = """
+        query {
+          teams(first: 1) {
+            nodes {
+              id
+              name
+            }
+          }
+        }
+        """
+        try:
+            response = requests.post(
+                "https://api.linear.app/graphql",
+                headers={
+                    "Authorization": self.linear_api_key,
+                    "Content-Type": "application/json"
+                },
+                json={"query": query},
+                timeout=10.0
+            )
+            data = response.json()
+            teams = data.get("data", {}).get("teams", {}).get("nodes", [])
+            if teams:
+                print(f"DEBUG: Found Linear Team: {teams[0]['name']} ({teams[0]['id']})")
+                return teams[0]['id']
+            else:
+                print("⚠️ No teams found in Linear.")
+                return None
+        except Exception as e:
+            print(f"⚠️ Failed to fetch Linear Team ID: {e}")
+            return None
+
     def log_incident_to_linear(self, reason: str, pr_url: str, incident_type: str = "override") -> bool:
         """
         Log governance incident to Linear by creating a new task.
@@ -780,6 +817,14 @@ class ActionGuard:
         if not self.linear_api_key:
             print("⚠️ Linear API key not configured. Skipping audit log.")
             return False
+
+        # 1. Get Team ID first
+        team_id = self._get_linear_team_id()
+        if not team_id:
+            print("⚠️ Could not find a Linear Team ID. Cannot create audit ticket.")
+            return False
+
+        print(f"📝 Logging Governance Incident to Linear (Team ID: {team_id})...")
 
         try:
             # Determine the appropriate title and priority based on incident type
