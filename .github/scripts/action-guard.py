@@ -512,17 +512,47 @@ class ActionGuard:
 
     def extract_governance_rules(self) -> Optional[Dict[str, Any]]:
         """
-        Extract governance rules from Notion and Linear using the same logic as governance_extraction.py
+        Extract governance rules from existing .mdc file or Notion/Linear APIs
+
+        Priority:
+        1. Read from existing .cursor/rules/founder-os-governance.mdc file (fastest)
+        2. Extract from Notion and Linear using governance_extraction.py (fallback)
 
         Returns:
             Dictionary with governance constraints or None if extraction fails
         """
-        print("GOVERNANCE: Extracting governance rules from Notion and Linear...")
+        print("GOVERNANCE: Extracting governance rules...")
 
+        # First, try to read from existing governance rules file
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.join(script_dir, '..', '..')
+        rules_file = os.path.join(project_root, '.cursor', 'rules', 'founder-os-governance.mdc')
+
+        if os.path.exists(rules_file):
+            try:
+                print("Reading existing governance rules from .mdc file...")
+                with open(rules_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                # Parse the .mdc file to extract governance rules
+                governance_data = self._parse_governance_mdc(content)
+
+                if governance_data:
+                    print("SUCCESS: Successfully read governance rules from .mdc file:")
+                    print(f"   Allowed tech: {governance_data.get('ALLOWED_TECH_STACK', 'None')[:50]}...")
+                    print(f"   Forbidden libs: {governance_data.get('FORBIDDEN_LIBRARIES', 'None')[:50]}...")
+                    return governance_data
+                else:
+                    print("Could not parse governance rules from .mdc file, falling back to API extraction")
+
+            except Exception as e:
+                print(f"Failed to read .mdc file: {e}, falling back to API extraction")
+
+        # Fallback: Extract from Notion and Linear APIs
         try:
+            print("Falling back to API extraction from Notion and Linear...")
+
             # Set up Python path to find the src module
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root = os.path.join(script_dir, '..', '..')
             src_path = os.path.join(project_root, 'src')
 
             # Add both project root and src directory to path
@@ -539,16 +569,94 @@ class ActionGuard:
 
             governance_data = extract_governance_data()
 
-            print("SUCCESS: Successfully extracted governance rules:")
-            print(f"   Allowed tech: {governance_data.get('ALLOWED_TECH_STACK', 'None')[:100]}...")
-            print(f"   Forbidden libs: {governance_data.get('FORBIDDEN_LIBRARIES', 'None')[:100]}...")
+            print("SUCCESS: Successfully extracted governance rules from APIs:")
+            print(f"   Allowed tech: {governance_data.get('ALLOWED_TECH_STACK', 'None')[:50]}...")
+            print(f"   Forbidden libs: {governance_data.get('FORBIDDEN_LIBRARIES', 'None')[:50]}...")
 
             return governance_data
 
         except Exception as e:
-            print(f"ERROR: Failed to extract governance rules: {e}")
+            print(f"ERROR: Failed to extract governance rules from APIs: {e}")
             import traceback
             traceback.print_exc()
+            return None
+
+    def _parse_governance_mdc(self, content: str) -> Optional[Dict[str, Any]]:
+        """
+        Parse governance rules from the .mdc file content
+
+        Args:
+            content: The content of the founder-os-governance.mdc file
+
+        Returns:
+            Dictionary with parsed governance rules
+        """
+        try:
+            governance_data = {}
+
+            # Extract allowed tech stack
+            if "ALLOWED TECH STACK" in content:
+                lines = content.split('\n')
+                in_section = False
+                for line in lines:
+                    if "ALLOWED TECH STACK" in line:
+                        in_section = True
+                        continue
+                    elif in_section and (line.startswith("## ") or line.startswith("# ❌")):
+                        break  # Next section started
+                    elif in_section and line.strip() and not line.startswith("#"):
+                        # Extract the tech stack line
+                        tech_line = line.strip()
+                        if tech_line and tech_line != "Unknown/Detect from Codebase (Ask user for clarification)":
+                            governance_data['ALLOWED_TECH_STACK'] = tech_line
+                            break
+
+            # Extract forbidden libraries
+            if "FORBIDDEN LIBRARIES" in content:
+                lines = content.split('\n')
+                in_section = False
+                for line in lines:
+                    if "FORBIDDEN LIBRARIES" in line:
+                        in_section = True
+                        continue
+                    elif in_section and (line.startswith("## ") or line.startswith("# 🔐")):
+                        break  # Next section started
+                    elif in_section and line.strip() and not line.startswith("#"):
+                        # Extract the forbidden libs line
+                        libs_line = line.strip()
+                        if libs_line and libs_line != "Unknown/Detect from Codebase (Ask user for clarification)":
+                            governance_data['FORBIDDEN_LIBRARIES'] = libs_line
+                            break
+
+            # Extract security level
+            if "SECURITY LEVEL" in content:
+                lines = content.split('\n')
+                in_section = False
+                for line in lines:
+                    if "SECURITY LEVEL" in line:
+                        in_section = True
+                        continue
+                    elif in_section and line.startswith("## "):
+                        break  # Next section started
+                    elif in_section and line.strip() and not line.startswith("#"):
+                        # Extract the security level line
+                        security_line = line.strip()
+                        if security_line:
+                            governance_data['STRICTNESS_LEVEL'] = security_line
+                            break
+
+            # Set defaults if not found
+            if 'ALLOWED_TECH_STACK' not in governance_data:
+                governance_data['ALLOWED_TECH_STACK'] = "Unknown/Detect from Codebase"
+            if 'FORBIDDEN_LIBRARIES' not in governance_data:
+                governance_data['FORBIDDEN_LIBRARIES'] = "Unknown/Detect from Codebase"
+            if 'STRICTNESS_LEVEL' not in governance_data:
+                governance_data['STRICTNESS_LEVEL'] = "MEDIUM"
+
+            return governance_data
+
+        except Exception as e:
+            print(f"Failed to parse .mdc content: {e}")
             return None
 
     def validate_governance_compliance(self, git_diff: str, governance_rules: Dict[str, Any]) -> bool:
@@ -573,7 +681,19 @@ class ActionGuard:
 
             for lib in forbidden_list:
                 if lib in git_diff.lower():
-                    # Look for actual imports, not just mentions in comments
+                    # Check for dependency additions in package files
+                    dependency_patterns = [
+                        f'^{lib}$',  # Just the library name (like in requirements.txt)
+                        f'^{lib}@',  # library@version
+                        f'^{lib}:',  # library: version
+                        f'"{lib}"',  # "library"
+                        f"'{lib}'",  # 'library'
+                        f'\\+{lib}$',  # +library (git diff format)
+                        f'\\+{lib}@',  # +library@version
+                        f'\\+{lib}:',  # +library: version
+                    ]
+
+                    # Check for import statements
                     import_patterns = [
                         f'import {lib}',
                         f'from {lib}',
@@ -582,17 +702,23 @@ class ActionGuard:
                         f'import.*from.*{lib}'
                     ]
 
-                    for pattern in import_patterns:
-                        if re.search(pattern, git_diff, re.IGNORECASE):
+                    # Check both dependency and import patterns
+                    found_violation = False
+                    for pattern in dependency_patterns + import_patterns:
+                        if re.search(pattern, git_diff, re.IGNORECASE | re.MULTILINE):
                             violations.append(f"BLOCKED: Forbidden library used: {lib}")
+                            found_violation = True
                             break
+
+                    if found_violation:
+                        break
 
         # Check for allowed tech stack compliance (basic check)
         allowed_tech = governance_rules.get('ALLOWED_TECH_STACK', '')
         if allowed_tech and allowed_tech != 'Unknown/Detect from Codebase':
             # This is more complex - we'd need to analyze the tech stack used
             # For now, just log that we have constraints
-            print(f"📋 Tech stack constraints active: {allowed_tech[:50]}...")
+            print(f"Tech stack constraints active: {allowed_tech[:50]}...")
 
         # Check security level
         security_level = governance_rules.get('STRICTNESS_LEVEL', 'MEDIUM')
