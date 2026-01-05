@@ -866,39 +866,37 @@ Immediate review required. This PR contains critical violations that may comprom
 
             # Create the Linear task using GraphQL mutation
             mutation = """
-            mutation CreateGovernanceAudit($title: String!, $description: String!, $priority: Int!) {
-                issueCreate(
-                    input: {
-                        title: $title
-                        description: $description
-                        priority: $priority
-                        teamId: "engineering"  # You'll need to adjust this based on your Linear setup
-                        labelIds: ["governance-audit"]  # You'll need to adjust this based on your Linear setup
-                    }
-                ) {
-                    issue {
-                        id
-                        title
-                        url
-                    }
+            mutation IssueCreate($input: IssueCreateInput!) {
+              issueCreate(input: $input) {
+                success
+                issue {
+                  id
+                  title
+                  url
                 }
+              }
             }
             """
 
-            url = "https://api.linear.app/graphql"
-            headers = {
-                'Authorization': self.linear_api_key,
-                'Content-Type': 'application/json',
-                'x-apollo-operation-name': 'CreateGovernanceAudit'
-            }
-
             variables = {
-                'title': title,
-                'description': description,
-                'priority': priority
+                "input": {
+                    "teamId": team_id,  # REQUIRED: Must include team ID!
+                    "title": title,
+                    "description": description,
+                    "priority": priority,
+                    "labelIds": []  # Empty for now - can add governance-audit label if needed
+                }
             }
 
-            response = requests.post(url, json={'query': mutation, 'variables': variables}, headers=headers)
+            response = requests.post(
+                "https://api.linear.app/graphql",
+                headers={
+                    "Authorization": self.linear_api_key,
+                    "Content-Type": "application/json"
+                },
+                json={"query": mutation, "variables": variables},
+                timeout=10.0
+            )
 
             if response.status_code == 200:
                 try:
@@ -914,8 +912,7 @@ Immediate review required. This PR contains critical violations that may comprom
                     print(f"Raw response: {response.text[:500]}...")
             else:
                 print(f"ERROR: Failed to create Linear task. Status: {response.status_code}, Response: {response.text}")
-
-            return False
+                return False
 
         except Exception as e:
             print(f"⚠️ Failed to log incident to Linear (continuing without audit): {e}")
