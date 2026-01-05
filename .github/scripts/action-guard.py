@@ -669,6 +669,7 @@ class ActionGuard:
         """
         print("INFO: Validating governance compliance...")
         print(f"DEBUG: Governance rules received: {governance_rules}")
+        print(f"DEBUG: Git diff preview (first 500 chars): {git_diff[:500]}...")
 
         violations = []
 
@@ -704,11 +705,17 @@ class ActionGuard:
 
                     # Check both dependency and import patterns
                     found_violation = False
-                    for pattern in dependency_patterns + import_patterns:
+                    all_patterns = dependency_patterns + import_patterns
+                    print(f"DEBUG: Checking library '{lib}' with patterns: {all_patterns}")
+
+                    for pattern in all_patterns:
                         if re.search(pattern, git_diff, re.IGNORECASE | re.MULTILINE):
+                            print(f"DEBUG: MATCH FOUND for pattern '{pattern}'")
                             violations.append(f"BLOCKED: Forbidden library used: {lib}")
                             found_violation = True
                             break
+                        else:
+                            print(f"DEBUG: No match for pattern '{pattern}'")
 
                     if found_violation:
                         break
