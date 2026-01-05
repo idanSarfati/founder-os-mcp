@@ -109,7 +109,8 @@ class GovernanceExtractor:
 
         except Exception as e:
             logger.exception(f"Governance extraction failed: {e}")
-            return self._get_fallback_data()
+            # Use hardcoded fallback rules for CI/CD environments
+            return self._get_hardcoded_fallback_data()
 
     def _extract_notion_context(self) -> str:
         """
@@ -249,6 +250,27 @@ class GovernanceExtractor:
         except Exception as e:
             logger.warning(f"Failed to format active tasks: {e}")
             return "- Unable to retrieve active tasks"
+
+    def _get_hardcoded_fallback_data(self) -> Dict[str, Any]:
+        """
+        Return hardcoded governance rules for CI/CD environments.
+
+        This provides actual enforcement rules even when APIs are unavailable.
+        Used as a fallback when external dependencies fail to load.
+
+        Returns:
+            Hardcoded governance settings based on project requirements
+        """
+        logger.warning("Using hardcoded governance fallback data")
+
+        return {
+            "ALLOWED_TECH_STACK": "Vue.js 3, Nuxt 3, Python 3.10+, FastAPI, PostgreSQL, Supabase",
+            "FORBIDDEN_LIBRARIES": "React, jQuery, Bootstrap, Axios, Lodash, Moment.js",
+            "AUTH_PROVIDER": "Supabase Auth",
+            "STRICTNESS_LEVEL": "MAXIMUM",
+            "active_tasks_context": "- Governance enforcement active",
+            "generation_timestamp": datetime.now().isoformat()
+        }
 
     def _get_fallback_data(self) -> Dict[str, Any]:
         """
