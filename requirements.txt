@@ -5,4 +5,5 @@ requests
 starlette<0.47.0
 supabase
 openai
+jquery
 
