@@ -50,8 +50,6 @@ jobs:
         # Set default validation mode if not specified
         export VALIDATION_MODE="${VALIDATION_MODE:-dual}"
         python .github/scripts/action-guard.py
-      run: |
-        python .github/scripts/action-guard.py
 
     # שלב 3: התקנת שאר הפרויקט (אופציונלי)
     # השלב הזה יקרה רק אם ה-Guard אישר (מה שלא יקרה עכשיו)
