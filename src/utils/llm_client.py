@@ -118,10 +118,10 @@ OUTPUT: Valid JSON only, no markdown or explanation.
         """
         logger.warning("Using safe default governance settings")
         return {
-            "allowed_tech": ["Unknown/Detect from Codebase"],
-            "forbidden_libs": ["Unknown/Detect from Codebase"],
-            "auth_strategy": "Unknown/Detect from Codebase",
-            "strictness": "Unknown/Detect from Codebase"
+            "ALLOWED_TECH_STACK": "Unknown/Detect from Codebase",
+            "FORBIDDEN_LIBRARIES": "Unknown/Detect from Codebase",
+            "AUTH_PROVIDER": "Unknown/Detect from Codebase",
+            "STRICTNESS_LEVEL": "MEDIUM"
         }
 
     def format_tech_stack(self, tech_stack: str) -> str:
