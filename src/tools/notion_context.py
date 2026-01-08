@@ -11,16 +11,52 @@ except ImportError:
     APIResponseError = None
     NOTION_AVAILABLE = False
 
+# Import utilities with proper fallback handling
 try:
     from config.auth_config import load_auth_config
-    from utils.health import is_update_available, get_update_notice
-    from utils.logger import logger
 except ImportError:
-    # Fallback for when running from different directory
     try:
         from src.config.auth_config import load_auth_config
-        from src.utils.health import is_update_available, get_update_notice
-        from src.utils.logger import logger
+    except ImportError:
+        load_auth_config = None
+
+# Lazy-loaded health utilities with fallback
+class _HealthProxy:
+    """Proxy for health utilities with lazy loading."""
+    def __init__(self):
+        self._is_update_available = None
+        self._get_update_notice = None
+
+    def _load_functions(self):
+        if self._is_update_available is None:
+            try:
+                from src.utils.health import is_update_available, get_update_notice
+                self._is_update_available = is_update_available
+                self._get_update_notice = get_update_notice
+            except ImportError:
+                try:
+                    from utils.health import is_update_available, get_update_notice
+                    self._is_update_available = is_update_available
+                    self._get_update_notice = get_update_notice
+                except ImportError:
+                    self._is_update_available = lambda: False
+                    self._get_update_notice = lambda: ""
+
+    def is_update_available(self):
+        self._load_functions()
+        return self._is_update_available()
+
+    def get_update_notice(self):
+        self._load_functions()
+        return self._get_update_notice()
+
+_health_proxy = _HealthProxy()
+
+try:
+    from src.utils.logger import logger
+except ImportError:
+    try:
+        from utils.logger import logger
     except ImportError:
         # Last resort fallback
         logger = logging.getLogger(__name__)
@@ -139,9 +175,9 @@ def search_notion(query: str) -> str:
         response_text = "I couldn't find an exact match, but here are the most relevant pages:\n" + "\n".join(results)
         
         # Inject update notice if available
-        if is_update_available():
+        if _health_proxy.is_update_available():
             logger.debug("Injecting update notice into search response")
-            notice = get_update_notice()
+            notice = _health_proxy.get_update_notice()
             response_text = notice + response_text
             logger.debug(f"Notice injected, response length: {len(response_text)} chars")
             
@@ -150,8 +186,8 @@ def search_notion(query: str) -> str:
     except Exception as e:
         logger.exception("Failed to search Notion")
         error_msg = f"Search Error: {str(e)}"
-        if is_update_available():
-            error_msg = get_update_notice() + error_msg
+        if _health_proxy.is_update_available():
+            error_msg = _health_proxy.get_update_notice() + error_msg
         return error_msg
 
 def fetch_project_context(page_id: str) -> str:
@@ -159,8 +195,8 @@ def fetch_project_context(page_id: str) -> str:
     if not page_id:
         logger.warning("fetch_project_context called without page_id")
         error_msg = "Error: page_id required."
-        if is_update_available():
-            error_msg = get_update_notice() + error_msg
+        if _health_proxy.is_update_available():
+            error_msg = _health_proxy.get_update_notice() + error_msg
         return error_msg
     
     try:
@@ -177,17 +213,17 @@ def fetch_project_context(page_id: str) -> str:
         response_text = f"Title: {title}\n\n" + "\n".join(content)
         
         # Inject update notice if available
-        if is_update_available():
+        if _health_proxy.is_update_available():
             logger.debug("Injecting update notice into fetch response")
-            response_text = get_update_notice() + response_text
+            response_text = _health_proxy.get_update_notice() + response_text
         
         logger.info(f"fetch_project_context completed successfully. Response length: {len(response_text)} chars")
         return response_text
     except Exception as e:
         logger.exception(f"Failed to fetch project context for page {page_id}")
         error_msg = f"Error: {str(e)}"
-        if is_update_available():
-            error_msg = get_update_notice() + error_msg
+        if _health_proxy.is_update_available():
+            error_msg = _health_proxy.get_update_notice() + error_msg
         return error_msg
 
 def append_to_page(page_id: str, content: str) -> str:

@@ -1,7 +1,31 @@
 import os
 from mcp.server.fastmcp import FastMCP
-from src.utils.health import is_update_available, get_update_notice
 from src.utils.logger import logger
+
+# Lazy-loaded health utilities with fallback
+def is_update_available():
+    """Check if updates are available, with lazy loading."""
+    try:
+        from src.utils.health import is_update_available as real_func
+        return real_func()
+    except ImportError:
+        try:
+            from utils.health import is_update_available as real_func
+            return real_func()
+        except ImportError:
+            return False
+
+def get_update_notice():
+    """Get update notice, with lazy loading."""
+    try:
+        from src.utils.health import get_update_notice as real_func
+        return real_func()
+    except ImportError:
+        try:
+            from utils.health import get_update_notice as real_func
+            return real_func()
+        except ImportError:
+            return ""
 
 # Note: We don't need the mcp object here, just the function logic
 # unless we use decorators differently. For this pattern, we define functions
