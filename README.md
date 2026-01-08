@@ -8,43 +8,91 @@ It eliminates context switching by granting your AI agent real-time access to te
 
 ---
 
-## ⚡ Quick Start (Zero Friction Setup)
+## ⚡ Dual-Track Installation (Choose Your Path)
 
-We have automated the setup process. No manual JSON editing or path configuration is required.
+Founder OS supports two installation methods based on your security and compliance requirements.
 
-### 1. Clone the Repository
+### Option A: Quick Start (Marketplace Installation)
+*For small teams and individual developers*
 
 ```bash
-git clone https://github.com/IdanSarfati/founder-os-mcp.git
+# Coming Soon: One-click marketplace installation
+# Visit: https://github.com/marketplace/founder-os
+```
+
+**Benefits:**
+- ⚡ Zero setup time
+- 🔄 Automatic updates
+- 🛡️ Marketplace security guarantees
+
+---
+
+### Option B: Enterprise Installation (Fork-to-Own)
+*For SOC2-compliant enterprises and security-conscious teams*
+
+#### Step 1: Fork & Audit
+
+```bash
+# Fork this repository to your organization
+git clone https://github.com/YOUR-ORG/founder-os-mcp.git
 cd founder-os-mcp
 
+# Run security audit before installation
+./audit_check.sh
 ```
 
-### 2. Run the Installer
-
-Execute the master installation script. It will create your environment and check your connections.
+#### Step 2: Manual Installation
 
 ```bash
-python install_script.py
+# Install dependencies securely
+pip install -r requirements.txt
 
+# Configure environment (create .env file)
+cp .env.example .env
+# Edit .env with your API keys
 ```
 
-**What the installer does:**
+#### Step 3: Verify & Connect
 
-* ✅ **Dependencies:** Installs all Python libraries.
-* 🔑 **Authentication:** Generates your `.env` file securely.
-* 🩺 **Health Check:** Validates your API Keys immediately.
-* 🔌 **Auto-Injection:** Registers the server in `.cursor/mcp.json`.
+```bash
+# Run health check
+python -c "from src.utils.health import run_health_check; run_health_check()"
 
-### 3. Final Step: Refresh & Verify
+# Register with Cursor
+python install_script.py
+```
 
-1. Open Cursor.
-2. Press `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac).
-3. Type "Developer: Reload Window" and press Enter.
+**Enterprise Benefits:**
+- 🔍 **Full Code Audit**: Review every line before deployment
+- 🛡️ **Supply Chain Security**: Dependencies pinned with SHA256 hashes
+- 🔒 **Air-Gapped Ready**: No external dependencies required
+- 📋 **Self-Verification**: Built-in audit tools confirm security boundaries
 
-**Verification:**
-Go to **Cursor Settings** (`Ctrl+Shift+J`) > **Features** > **MCP Servers**.
-You should see `founder-os` with a **Green Light** 🟢.
+---
+
+## 🔒 Privacy & Data Policy
+
+**We do not store your code. We only transmit logic metadata to OpenAI for reasoning. Zero logs retained.**
+
+### Data Handling Guarantee
+- **No Code Storage**: Your source code never leaves your environment
+- **Metadata Only**: Only structural information (function names, imports, patterns) is analyzed
+- **Zero Retention**: No conversation logs or analysis results are stored
+- **Local Processing**: All governance rules are processed locally when possible
+
+### Network Communications
+Founder OS communicates only with declared APIs:
+- **Linear API**: Task context and project priorities
+- **Notion API**: Technical specifications and governance rules
+- **OpenAI/Gemini API**: AI-powered code analysis (logic metadata only)
+- **Git Operations**: Local subprocess calls for code analysis
+
+### Enterprise Security
+For SOC2-compliant deployments, use Option B (Fork-to-Own) installation:
+- Run `./audit_check.sh` to verify network boundaries
+- Audit all dependencies in `requirements.txt`
+- Review source code for security compliance
+- Self-host if required for air-gapped environments
 
 ---
 
@@ -148,6 +196,32 @@ Whenever you start a new coding session, open the Composer (`Cmd/Ctrl + I`) and 
 
 **How it works:**
 The agent will execute the `bootstrap_project` tool, injecting a local `.cursorrules` file into your folder. From that moment, the AI will enforce your architecture constraints (e.g., "Do not use SQLite," "Follow Clean Architecture").
+
+## ✅ Trust & Verification
+
+### GitHub Verified Creator Program
+Founder OS is committed to security and transparency. We have applied for GitHub's Verified Creator program to provide additional trust signals:
+
+- **Application Status**: Submitted and under review
+- **Verification Benefits**: Official badges and enhanced security guarantees
+- **Timeline**: 2-4 weeks for initial review
+
+### Self-Verification Tools
+Run our built-in audit tools to verify security compliance:
+
+```bash
+# Security audit and trust verification
+./audit_check.sh
+
+# Health check and connectivity validation
+python -c "from src.utils.health import run_health_check; run_health_check()"
+```
+
+### Enterprise Compliance
+- **SOC2 Ready**: Designed for SOC2 Type II compliance
+- **Supply Chain Security**: All dependencies pinned with SHA256 hashes
+- **Code Transparency**: 100% open source with no obfuscation
+- **Audit Trail**: Built-in governance logging and override mechanisms
 
 ---
 

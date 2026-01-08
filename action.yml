@@ -1,0 +1,58 @@
+name: 'Founder OS Action Guard'
+description: 'AI-powered governance and compliance validation for PRs'
+author: 'Founder OS'
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  notion_token:
+    description: 'Notion API token for accessing governance specifications'
+    required: true
+
+  linear_api_key:
+    description: 'Linear API key for task context and priorities'
+    required: false
+
+  gemini_api_key:
+    description: 'Google Gemini API key for AI-powered PR validation analysis'
+    required: true
+
+  validation_mode:
+    description: 'Validation mode - dual, spec_only, or governance_only'
+    required: false
+    default: 'dual'
+
+  pr_title:
+    description: 'Pull request title for context analysis'
+    required: true
+
+  pr_number:
+    description: 'Pull request number for tracking'
+    required: true
+
+  github_repository:
+    description: 'GitHub repository identifier (owner/repo)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Action Guard dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests==2.31.0 google-genai==0.8.0 python-dotenv==1.0.0 notion-client==4.3.0
+
+    - name: Run Action Guard validation
+      shell: bash
+      env:
+        NOTION_TOKEN: ${{ inputs.notion_token }}
+        LINEAR_API_KEY: ${{ inputs.linear_api_key }}
+        GEMINI_API_KEY: ${{ inputs.gemini_api_key }}
+        VALIDATION_MODE: ${{ inputs.validation_mode }}
+        PR_TITLE: ${{ inputs.pr_title }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+        GITHUB_REPOSITORY: ${{ inputs.github_repository }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: python .github/scripts/action-guard.py

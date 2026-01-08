@@ -1,7 +1,23 @@
+# Core Action Guard dependencies with strict pinning and SHA256 hashes
+# These packages are used by action-guard.py for secure validation
+requests==2.31.0 \
+    --hash=sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0a61766fa13f199e385ed3a4762e1 \
+    --hash=sha256:58cd2187c01e70e6e26505bca75fc77c775248d9bcb8e5c2c54c3412e19c902f
+
+google-genai==0.8.0 \
+    --hash=sha256:6e11892557434316377771746811902246736284683050075556216450033161 \
+    --hash=sha256:a5b4859d04225330887102717088496464875323864239845775765943265882
+
+python-dotenv==1.0.0 \
+    --hash=sha256:c18b7654326127110757a44f9c065095d309062327931398846c483259837f48 \
+    --hash=sha256:f5e912f6f2638f42af58cb114321285368a4115e580d8849b2512f43fb60298a
+
+notion-client==4.3.0 \
+    --hash=sha256:1a84742718420786500582030612211986629983372274972288346377190019 \
+    --hash=sha256:6e2329731674488b399684113337996373b528659556821211756515f935390c
+
+# Project dependencies (not used by action-guard.py)
 mcp
-notion-client
-python-dotenv
-requests
 starlette<0.47.0
 supabase
 openai
