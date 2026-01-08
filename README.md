@@ -15,9 +15,18 @@ IronSpec supports two installation methods based on your security and compliance
 ### Option A: Quick Start (Marketplace Installation)
 *For small teams and individual developers*
 
-```bash
-# Coming Soon: One-click marketplace installation
-# Visit: https://github.com/marketplace/iron-spec
+```yaml
+steps:
+  - name: Checkout Code
+    uses: actions/checkout@v3
+
+  - name: 🛡️ Run IronSpec Governance
+    uses: idanSarfati/IronSpec@v1.0.0
+    with:
+      gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+      linear_api_key: ${{ secrets.LINEAR_API_KEY }}
+      notion_api_key: ${{ secrets.NOTION_API_KEY }}
+      # Optional: linear_team_id if needed
 ```
 
 **Benefits:**
