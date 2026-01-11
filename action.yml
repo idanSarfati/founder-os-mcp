@@ -34,8 +34,12 @@ runs:
     - name: Run Governance Guard
       shell: bash
       env:
-        GEMINI_API_KEY: ${{ inputs.gemini_api_key }} # Updated to match your actual code
+        GEMINI_API_KEY: ${{ inputs.gemini_api_key }}
         LINEAR_API_KEY: ${{ inputs.linear_api_key }}
-        NOTION_TOKEN: ${{ inputs.notion_api_key }}   # Updated to match your actual code env var
+        NOTION_TOKEN: ${{ inputs.notion_api_key }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
+        # Adding these lines resolves context issues
+        GITHUB_EVENT_PATH: ${{ github.event_path }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_REF: ${{ github.ref }}
       run: python ${{ github.action_path }}/.github/scripts/action-guard.py
