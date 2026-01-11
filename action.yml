@@ -7,7 +7,7 @@ branding:
 inputs:
   gemini_api_key:
     description: 'API Key for the Reasoning Engine'
-    required: true
+    required: false
   linear_api_key:
     description: 'API Key for Audit Logging'
     required: true
@@ -25,21 +25,24 @@ runs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-
+    
     - name: Install Dependencies (Secure)
       shell: bash
-      # github.action_path is critical here!
       run: pip install -r ${{ github.action_path }}/requirements.txt
 
     - name: Run Governance Guard
       shell: bash
       env:
+        # API Keys
         GEMINI_API_KEY: ${{ inputs.gemini_api_key }}
         LINEAR_API_KEY: ${{ inputs.linear_api_key }}
         NOTION_TOKEN: ${{ inputs.notion_api_key }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
-        # Adding these lines resolves context issues
+        
+        # 👇 The big fix: Pass Context data to Python
         GITHUB_EVENT_PATH: ${{ github.event_path }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_REF: ${{ github.ref }}
+        GITHUB_EVENT_NAME: ${{ github.event_name }}
+      
       run: python ${{ github.action_path }}/.github/scripts/action-guard.py
