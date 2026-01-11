@@ -1,8 +1,8 @@
 # CORE LOGIC - Pinned Versions (Standard Security)
-requests==2.31.0
-google-genai==0.8.0
-python-dotenv==1.0.0
-notion-client==4.3.0
+requests==2.32.5
+google-genai==1.56.0
+python-dotenv==1.2.1
+notion-client==2.7.0
 
 # Project dependencies (not used by action-guard.py)
 mcp
