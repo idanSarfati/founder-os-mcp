@@ -116,32 +116,99 @@ If the code violates a rule, you must BLOCK it.
             sys.exit(1)
 
     def get_pr_details(self) -> Dict[str, Any]:
-        """Get full PR details including body and labels from GitHub API"""
-        try:
-            repo = os.getenv('GITHUB_REPOSITORY')
-            pr_number = os.getenv('PR_NUMBER')
-
-            if not repo or not pr_number:
-                print("ERROR: Could not determine PR details from environment")
-                return {}
-
-            url = f"https://api.github.com/repos/{repo}/pulls/{pr_number}"
-            headers = {'Authorization': f'token {self.github_token}'}
-
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()
-
-            pr_data = response.json()
-            return {
-                'title': pr_data.get('title', ''),
-                'body': pr_data.get('body', ''),
-                'labels': [label['name'] for label in pr_data.get('labels', [])],
-                'number': pr_data.get('number'),
-                'html_url': pr_data.get('html_url')
-            }
-        except Exception as e:
-            print(f"ERROR: Failed to get PR details: {e}")
+        """
+        Retrieves PR details from GITHUB_EVENT_PATH (standard for Actions)
+        with fallbacks to env vars or GITHUB_REF.
+        """
+        print("🔍 [Debug] Starting PR Context Extraction...")
+        
+        repo_full_name = os.getenv('GITHUB_REPOSITORY')
+        if not repo_full_name:
+            print("❌ ERROR: GITHUB_REPOSITORY env var is missing")
             return {}
+
+        pr_number = None
+        pr_title = "Unknown Title"
+        pr_body = "No Body"
+        pr_labels = []
+        pr_html_url = None
+
+        # Strategy 1: Read from the Event JSON file (The Gold Standard 🥇)
+        event_path = os.getenv('GITHUB_EVENT_PATH')
+        if event_path and os.path.exists(event_path):
+            print(f"   📂 Reading event file at: {event_path}")
+            try:
+                with open(event_path, 'r') as f:
+                    event_data = json.load(f)
+                
+                # Check if this is a PR event
+                if 'pull_request' in event_data:
+                    pr_data = event_data['pull_request']
+                    pr_number = pr_data.get('number')
+                    pr_title = pr_data.get('title', pr_title)
+                    pr_body = pr_data.get('body', pr_body)
+                    pr_html_url = pr_data.get('html_url')
+                    pr_labels = [label.get('name', '') for label in pr_data.get('labels', [])]
+                    print(f"   ✅ Success: Extracted PR #{pr_number} from event.json")
+                else:
+                    print("   ⚠️ Event file found, but 'pull_request' key is missing (might be a push event?)")
+            except Exception as e:
+                print(f"   ⚠️ Error reading event JSON: {e}")
+
+        # Strategy 2: Fallback to direct Env Var (Legacy support)
+        if not pr_number and os.getenv('PR_NUMBER'):
+            try:
+                pr_number = int(os.getenv('PR_NUMBER'))
+                print(f"   ✅ Success: Found PR #{pr_number} from PR_NUMBER env var")
+            except (ValueError, TypeError):
+                pass
+
+        # Strategy 3: Fallback to GITHUB_REF parsing
+        # format: refs/pull/123/merge
+        if not pr_number:
+            ref = os.getenv('GITHUB_REF', '')
+            if 'refs/pull/' in ref:
+                try:
+                    # split by '/' and take the 3rd element (index 2)
+                    extracted_num = ref.split('/')[2]
+                    if extracted_num.isdigit():
+                        pr_number = int(extracted_num)
+                        print(f"   ✅ Success: Extracted PR #{pr_number} from GITHUB_REF")
+                except:
+                    pass
+
+        if not pr_number:
+            print("❌ CRITICAL: Could not determine PR number from any source.")
+            return {}
+
+        # If we have a number but missing title/body/labels/html_url (Strategy 2/3), fetch via API
+        if pr_number and (pr_title == "Unknown Title" or not pr_html_url) and self.github_token:
+            print("   🔄 Fetching missing PR details via GitHub API...")
+            try:
+                headers = {
+                    "Authorization": f"token {self.github_token}",
+                    "Accept": "application/vnd.github.v3+json"
+                }
+                api_url = f"https://api.github.com/repos/{repo_full_name}/pulls/{pr_number}"
+                response = requests.get(api_url, headers=headers)
+                if response.status_code == 200:
+                    data = response.json()
+                    pr_title = data.get('title', pr_title)
+                    pr_body = data.get('body', pr_body)
+                    pr_html_url = data.get('html_url', pr_html_url)
+                    pr_labels = [label.get('name', '') for label in data.get('labels', [])]
+                    print("   ✅ API fetch successful")
+            except Exception as e:
+                print(f"   ⚠️ API fetch failed: {e}")
+
+        return {
+            'title': pr_title,
+            'body': pr_body or '',
+            'labels': pr_labels,
+            'number': pr_number,
+            'html_url': pr_html_url or '',
+            'repo': repo_full_name
+        }
 
     def check_for_override(self, pr_details: Dict[str, Any]) -> Optional[str]:
         """
